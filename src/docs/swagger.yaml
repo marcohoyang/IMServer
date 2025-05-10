@@ -1,0 +1,133 @@
+info:
+  contact: {}
+paths:
+  /example/helloworld:
+    get:
+      consumes:
+      - application/json
+      description: do ping
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: ping example
+      tags:
+      - example
+  /login:
+    post:
+      parameters:
+      - description: 用户名
+        in: formData
+        name: name
+        type: string
+      - description: 密码
+        in: formData
+        name: password
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: 登录
+      tags:
+      - 用户模块
+  /register:
+    post:
+      parameters:
+      - description: 用户名
+        in: formData
+        name: name
+        type: string
+      - description: 密码
+        in: formData
+        name: password
+        type: string
+      - description: 确认密码
+        in: formData
+        name: repassword
+        type: string
+      - description: 手机号
+        in: formData
+        name: phone
+        type: string
+      - description: 邮箱
+        in: formData
+        name: email
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: 注册用户
+      tags:
+      - 用户模块
+  /user/getUser:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户名
+        in: query
+        name: name
+        type: string
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - bearerAuth: []
+      summary: 查询用户
+      tags:
+      - 用户模块
+  /user/updateUser:
+    post:
+      parameters:
+      - description: Id
+        in: formData
+        name: id
+        type: string
+      - description: 用户名
+        in: formData
+        name: name
+        type: string
+      - description: 密码
+        in: formData
+        name: password
+        type: string
+      - description: 手机号
+        in: formData
+        name: phone
+        type: string
+      - description: 邮箱
+        in: formData
+        name: email
+        type: string
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - bearerAuth: []
+      summary: 更新用户
+      tags:
+      - 用户模块
+swagger: "2.0"

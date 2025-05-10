@@ -1,0 +1,26 @@
+# 忽略构建目录
+build/
+
+# 忽略操作系统生成的文件
+.DS_Store
+Thumbs.db
+
+# 忽略IDE/编辑器生成的文件
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 忽略日志文件
+logs/
+*.log
+
+# 忽略环境变量文件
+.env
+
+# 忽略依赖目录
+node_modules/
+vendor/

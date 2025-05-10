@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package im;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = ".;im";
+
+service UserService {
+  rpc CreateUser (IMUser) returns (IMUser);
+  rpc GetUser (UserRequest) returns (IMUser);
+  rpc UpdateUser (IMUser) returns (IMUser);
+  rpc DeleteUser (UserRequest) returns (DeleteResponse);
+}
+
+message UserRequest {
+  uint64 id = 1;
+  string name = 2;
+  string phone = 3;
+}
+
+message DeleteResponse {
+  bool success = 1;
+}
+
+message IMUser {
+  // 基础字段
+  uint64 id = 1;  // 对应 gorm.Model 的 ID
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+
+  // 用户信息
+  string name = 5;  // 已建立索引
+  string password = 6;
+  string phone = 7;  // 已建立索引
+  string email = 8;
+
+  // 登录状态
+  google.protobuf.Timestamp login_time = 9;
+  google.protobuf.Timestamp logout_time = 10;
+  google.protobuf.Timestamp heartbeat_time = 11;
+
+  // 客户端信息
+  string client_ip = 12;
+  string client_port = 13;
+  string identity = 14;
+  string device = 15;
+  bool is_logout = 16;
+  string salt = 17;
+}
