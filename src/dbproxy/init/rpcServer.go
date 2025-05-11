@@ -1,4 +1,4 @@
-package init_grpc
+package grpc_server
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/hoyang/imserver/src/conveter"
 	"github.com/hoyang/imserver/src/dbproxy/models"
 	im "github.com/hoyang/imserver/src/proto"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -17,7 +18,25 @@ import (
 
 type server struct {
 	im.UnimplementedUserServiceServer
-	db *gorm.DB
+	db    *gorm.DB
+	redis *redis.Client
+}
+
+func InitRpcServer(db *gorm.DB, redis *redis.Client) {
+	listen, err := net.Listen("tcp", ":50001")
+	if err != nil {
+		fmt.Printf("listen failed %v\n", err)
+	}
+	rpcServer := grpc.NewServer()
+	im.RegisterUserServiceServer(rpcServer, &server{db: db, redis: redis})
+	fmt.Printf("server listening at %v\n", listen.Addr())
+	if err := rpcServer.Serve(listen); err != nil {
+		fmt.Printf("failed to serve: %v", err)
+	}
+}
+
+func (s *server) PublishMsg(ctx context.Context, chanel string, msg string) {
+	s.redis.Publish(ctx, chanel, msg)
 }
 
 func (s *server) CreateUser(ctx context.Context, user *im.IMUser) (*im.IMUser, error) {
@@ -67,17 +86,4 @@ func (s *server) GetUser(ctx context.Context, req *im.UserRequest) (*im.IMUser, 
 
 	fmt.Printf("查询用户成功, userId: %v\n", dbUser.ID)
 	return conveter.ToPBIMUser(&dbUser), nil
-}
-
-func InitRpcServer(db *gorm.DB) {
-	listen, err := net.Listen("tcp", ":50001")
-	if err != nil {
-		fmt.Printf("listen failed %v\n", err)
-	}
-	rpcServer := grpc.NewServer()
-	im.RegisterUserServiceServer(rpcServer, &server{db: db})
-	fmt.Printf("server listening at %v\n", listen.Addr())
-	if err := rpcServer.Serve(listen); err != nil {
-		fmt.Printf("failed to serve: %v", err)
-	}
 }

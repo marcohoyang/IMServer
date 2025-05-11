@@ -130,4 +130,23 @@ paths:
       summary: 更新用户
       tags:
       - 用户模块
+  /user/upgradeWebSocket:
+    get:
+      consumes:
+      - application/json
+      description: Handle WebSocket upgrade request
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - bearerAuth: []
+      summary: 升级websocket
+      tags:
+      - 用户模块
 swagger: "2.0"

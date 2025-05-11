@@ -4,24 +4,28 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/hoyang/imserver/src/conveter"
 	"github.com/hoyang/imserver/src/dbproxy/models"
 	im "github.com/hoyang/imserver/src/proto"
 	rpcClient "github.com/hoyang/imserver/src/rpc"
 	"github.com/hoyang/imserver/src/utils"
+	"github.com/redis/go-redis/v9"
 )
 
 type UserService struct {
-	pool *rpcClient.ClientPool
+	pool    *rpcClient.ClientPool
+	redisDB *redis.Client
 }
 
 // NewUserService 构造函数
-func NewUserService(pool *rpcClient.ClientPool) *UserService {
-	return &UserService{pool: pool}
+func NewUserService(pool *rpcClient.ClientPool, redisDB *redis.Client) *UserService {
+	return &UserService{pool: pool, redisDB: redisDB}
 }
 
 // GetIndex
@@ -196,8 +200,51 @@ func (s *UserService) UpdateUser(c *gin.Context) {
 	})
 }
 
-func (s *UserService) SwapToWebSocket(c *gin.Context) {
-	
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+// UpgradeWebSocket
+// @Summary 升级websocket
+// @Description Handle WebSocket upgrade request
+// @Tags 用户模块
+// @Accept json
+// @Produce json
+// @param Authorization header  string true "Bearer token"
+// @Security bearerAuth
+// @Router /user/upgradeWebSocket [get]
+func (s *UserService) UpgradeWebSocket(c *gin.Context) {
+	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		fmt.Println("升级websocket失败")
+		c.JSON(400, gin.H{
+			"mseeage": "升级ws失败",
+		})
+		return
+	}
+
+	fmt.Println("升级websocke成功")
+	go s.handlerWebsocket(ws)
+}
+
+func (s *UserService) handlerWebsocket(ws *websocket.Conn) {
+	defer ws.Close()
+	for {
+		messageType, message, err := ws.ReadMessage()
+		if err != nil {
+			return
+		}
+
+		fmt.Println(string(message))
+		err = ws.WriteMessage(messageType, []byte("收到消息"))
+		if err != nil {
+			return
+		}
+	}
 }
 
 func (s *UserService) getUser(user *models.IMUser) (*models.IMUser, error) {

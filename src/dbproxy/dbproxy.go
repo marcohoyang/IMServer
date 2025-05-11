@@ -1,16 +1,15 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
-	init_grpc "github.com/hoyang/imserver/src/dbproxy/init"
+	grpc_server "github.com/hoyang/imserver/src/dbproxy/init"
 	"github.com/hoyang/imserver/src/dbproxy/models"
+	"github.com/hoyang/imserver/src/utils"
 	"github.com/joho/godotenv"
-	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -22,22 +21,6 @@ type User struct {
 	Age        int
 	Email      string `gorm:"type:varchar(255);uniqueIndex"`
 	IsActive   bool
-}
-
-func createRedisConn() *redis.Client {
-	// 创建 Redis 客户端
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379", // Redis 地址
-		Password: "",               // 密码（没有则留空）
-		DB:       0,                // 默认数据库
-	})
-	pong, err := rdb.Ping(context.Background()).Result()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Redis 连接成功:", pong)
-
-	return rdb
 }
 
 func createMysqlConn(logger logger.Interface) *gorm.DB {
@@ -62,9 +45,6 @@ func createMysqlConn(logger logger.Interface) *gorm.DB {
 	return sqldb
 }
 
-var DB *gorm.DB
-var RDB *redis.Client
-
 func main() {
 	newLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags),
@@ -73,12 +53,12 @@ func main() {
 			LogLevel:      logger.Info,
 			Colorful:      true,
 		})
-	RDB = createRedisConn()
-	DB = createMysqlConn(newLogger)
+	redis := utils.CreateRedisConn("localhost:6379")
+	db := createMysqlConn(newLogger)
 
 	fmt.Println("Mysql 连接成功:")
 
-	DB.AutoMigrate(&User{}, &models.IMUser{})
+	db.AutoMigrate(&User{}, &models.IMUser{})
 
-	init_grpc.InitRpcServer(DB)
+	grpc_server.InitRpcServer(db, redis)
 }

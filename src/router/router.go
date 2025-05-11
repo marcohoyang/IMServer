@@ -15,15 +15,16 @@ func Router(service *service.UserService) *gin.Engine {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	r.GET("/index", service.GetIndex)
 
-
 	r.POST("/register", service.Register)
 	r.POST("/login", service.Login)
 	user := r.Group("/user")
+
+	user.GET("/upgradeWebSocket", service.UpgradeWebSocket)
 	user.Use(utils.JWTAuthMiddleware())
 	{
 		user.POST("/updateUser", service.UpdateUser)
 		user.GET("/getUser", service.GetUser)
-		user.GET("/ws", service.SwapToWebSocket)
+
 	}
 
 	return r
