@@ -213,6 +213,16 @@
                             class="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-100 border-transparent focus:border-primary focus:bg-white focus:ring-0 transition-all">
                     </div>
                 </div>
+
+                <div class="p-4 border-t border-gray-200">
+                    <div class="relative">
+                        <input type="text" id="add-friend-input" placeholder="输入用户名添加好友" 
+                            class="w-full pl-4 pr-12 py-2 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all">
+                        <button id="add-friend-button" class="absolute right-2 bottom-2 p-2 bg-primary text-white rounded-full hover:bg-primary/90 transition-colors">
+                            <i class="fa fa-user-plus"></i>
+                        </button>
+                    </div>
+                </div>
                 
                 <div class="flex-1 overflow-y-auto scrollbar-hide">
                     <div class="p-3">
@@ -922,6 +932,52 @@
             registerContainer.classList.add('hidden');
             loginContainer.classList.remove('hidden');
         });
+
+        // DOM 元素
+const addFriendInput = document.getElementById('add-friend-input');
+const addFriendButton = document.getElementById('add-friend-button');
+
+// 添加好友处理
+addFriendButton.addEventListener('click', async () => {
+    const friendUsername = addFriendInput.value.trim();
+    if (friendUsername) {
+        try {
+            const username = localStorage.getItem('chat_username');
+            const userID = localStorage.getItem('user_id');
+
+            // 发送添加好友请求
+            const response = await fetch(`${API_BASE_URL}/api/user/addfriend`, {
+                method: 'POST',
+                credentials: 'include', // 携带 Cookie
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    userID: userID,
+                    friendUsername: friendUsername
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `添加好友失败: ${response.status}`);
+            }
+
+            // 显示添加成功消息
+            showNotification('添加好友成功', `已向 ${friendUsername} 发送好友请求`);
+
+            // 清空输入框
+            addFriendInput.value = '';
+
+            // 刷新好友列表
+            await loadFriendsList();
+        } catch (error) {
+            console.error('添加好友错误:', error);
+            showNotification('添加好友失败', error.message, 'error');
+        }
+    }
+});
 
         // 页面加载时检查是否已登录
         //document.addEventListener('DOMContentLoaded', checkLoggedIn);

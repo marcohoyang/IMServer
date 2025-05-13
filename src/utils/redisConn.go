@@ -2,7 +2,7 @@ package utils
 
 import (
 	"context"
-	"fmt"
+	"log"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -18,7 +18,7 @@ func CreateRedisConn(addr string) *redis.Client {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Redis 连接成功:", pong)
+	log.Println("Redis 连接成功:", pong)
 
 	return rdb
 }
@@ -30,6 +30,6 @@ func Publish(redis *redis.Client, ctx context.Context, channel string, msg strin
 func Subscription(redis *redis.Client, ctx context.Context, channel string) (string, error) {
 	pubsub := redis.Subscribe(ctx, channel)
 	msg, err := pubsub.ReceiveMessage(ctx)
-	fmt.Println(msg.String())
+	log.Println(msg.String())
 	return msg.Payload, err
 }

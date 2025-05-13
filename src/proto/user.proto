@@ -11,6 +11,17 @@ service UserService {
   rpc GetUser (UserRequest) returns (IMUser);
   rpc UpdateUser (IMUser) returns (IMUser);
   rpc DeleteUser (UserRequest) returns (DeleteResponse);
+  rpc GetFriends (UserRequest) returns (Friends);
+}
+
+message Friends {
+  repeated Friend friendlist = 1;
+}
+
+message Friend {
+  uint64 id = 1;
+  string name = 2;
+  bool online = 3;
 }
 
 message UserRequest {

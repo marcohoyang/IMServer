@@ -48,7 +48,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "用户名",
-                        "name": "name",
+                        "name": "username",
                         "in": "formData"
                     },
                     {
@@ -78,7 +78,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "用户名",
-                        "name": "name",
+                        "name": "username",
                         "in": "formData"
                     },
                     {
@@ -179,7 +179,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "用户名",
-                        "name": "name",
+                        "name": "username",
                         "in": "formData"
                     },
                     {

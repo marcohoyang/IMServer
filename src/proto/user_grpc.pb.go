@@ -26,6 +26,7 @@ type UserServiceClient interface {
 	GetUser(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*IMUser, error)
 	UpdateUser(ctx context.Context, in *IMUser, opts ...grpc.CallOption) (*IMUser, error)
 	DeleteUser(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
+	GetFriends(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*Friends, error)
 }
 
 type userServiceClient struct {
@@ -72,6 +73,15 @@ func (c *userServiceClient) DeleteUser(ctx context.Context, in *UserRequest, opt
 	return out, nil
 }
 
+func (c *userServiceClient) GetFriends(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*Friends, error) {
+	out := new(Friends)
+	err := c.cc.Invoke(ctx, "/im.UserService/GetFriends", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility
@@ -80,6 +90,7 @@ type UserServiceServer interface {
 	GetUser(context.Context, *UserRequest) (*IMUser, error)
 	UpdateUser(context.Context, *IMUser) (*IMUser, error)
 	DeleteUser(context.Context, *UserRequest) (*DeleteResponse, error)
+	GetFriends(context.Context, *UserRequest) (*Friends, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -98,6 +109,9 @@ func (UnimplementedUserServiceServer) UpdateUser(context.Context, *IMUser) (*IMU
 }
 func (UnimplementedUserServiceServer) DeleteUser(context.Context, *UserRequest) (*DeleteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteUser not implemented")
+}
+func (UnimplementedUserServiceServer) GetFriends(context.Context, *UserRequest) (*Friends, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFriends not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 
@@ -184,6 +198,24 @@ func _UserService_DeleteUser_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetFriends_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetFriends(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/im.UserService/GetFriends",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetFriends(ctx, req.(*UserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -206,6 +238,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteUser",
 			Handler:    _UserService_DeleteUser_Handler,
+		},
+		{
+			MethodName: "GetFriends",
+			Handler:    _UserService_GetFriends_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

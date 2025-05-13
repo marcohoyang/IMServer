@@ -3,6 +3,8 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -39,6 +41,20 @@ func GenerateToken(userID uint) (string, error) {
 	return token.SignedString(jwtKey)
 }
 
+func JWTAuthMiddlewareForWS() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cookie, err := c.Cookie("token")
+		if err != nil {
+			c.JSON(401, gin.H{"error": "未找到认证 Cookie"})
+			return
+		}
+
+		// 验证 Token
+		tokenStr := strings.TrimPrefix(cookie, "Bearer ")
+		praseToken(c, tokenStr)
+	}
+}
+
 func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 从 Header 中获取 Token
@@ -58,37 +74,41 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 		tokenStr = tokenStr[7:]
-
-		// 解析 Token
-		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-			// 验证签名算法
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return jwtKey, nil
-		})
-
-		// 验证 Token
-		if err != nil {
-			if errors.Is(err, jwt.ErrTokenExpired) {
-				c.JSON(401, gin.H{"error": "Token已过期"})
-				c.Abort()
-				return
-			}
-			c.JSON(401, gin.H{"error": "无效的Token"})
-			c.Abort()
-			return
-		}
-
-		if !token.Valid {
-			c.JSON(401, gin.H{"error": "无效的Token"})
-			c.Abort()
-			return
-		}
-
-		// 将用户ID存入上下文，后续处理可直接获取
-		c.Set("user_id", claims.UserID)
-		c.Next()
+		praseToken(c, tokenStr)
 	}
+}
+
+func praseToken(c *gin.Context, tokenStr string) {
+	// 解析 Token
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		// 验证签名算法
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return jwtKey, nil
+	})
+
+	// 验证 Token
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			c.JSON(401, gin.H{"error": "Token已过期"})
+			c.Abort()
+			return
+		}
+		c.JSON(401, gin.H{"error": "无效的Token"})
+		c.Abort()
+		return
+	}
+
+	if !token.Valid {
+		c.JSON(401, gin.H{"error": "无效的Token"})
+		c.Abort()
+		return
+	}
+
+	// 将用户ID存入上下文，后续处理可直接获取
+	log.Printf("set userID %v\n", claims.UserID)
+	c.Set("user_id", claims.UserID)
+	c.Next()
 }

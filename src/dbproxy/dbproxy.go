@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	grpc_server "github.com/hoyang/imserver/src/dbproxy/init"
-	"github.com/hoyang/imserver/src/dbproxy/models"
+	grpc_server "github.com/hoyang/imserver/src/dbproxy/rpcserver"
+	"github.com/hoyang/imserver/src/models"
 	"github.com/hoyang/imserver/src/utils"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
@@ -15,18 +15,10 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-type User struct {
-	gorm.Model // 内嵌 gorm.Model，包含 ID, CreatedAt, UpdatedAt, DeletedAt
-	Name       string
-	Age        int
-	Email      string `gorm:"type:varchar(255);uniqueIndex"`
-	IsActive   bool
-}
-
 func createMysqlConn(logger logger.Interface) *gorm.DB {
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Printf("警告: 无法加载 .env 文件: %v", err)
+		log.Printf("警告: 无法加载 .env 文件: %v", err)
 	}
 
 	// 获取环境变量（如果 .env 未加载，会尝试从系统环境变量获取）
@@ -56,9 +48,9 @@ func main() {
 	redis := utils.CreateRedisConn("localhost:6379")
 	db := createMysqlConn(newLogger)
 
-	fmt.Println("Mysql 连接成功:")
+	log.Println("Mysql 连接成功:")
 
-	db.AutoMigrate(&User{}, &models.IMUser{})
+	db.AutoMigrate(&models.IMUser{}, &models.Contact{})
 
 	grpc_server.InitRpcServer(db, redis)
 }

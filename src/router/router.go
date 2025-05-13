@@ -13,18 +13,24 @@ func Router(service *service.UserService) *gin.Engine {
 	r := gin.Default()
 	docs.SwaggerInfo.BasePath = ""
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+
+	r.Static("/asset", "asset/")
+	r.LoadHTMLGlob("/home/hoyang/IMServer/src/view/*")
+
+	r.GET("/", service.GetIndex)
 	r.GET("/index", service.GetIndex)
 
-	r.POST("/register", service.Register)
-	r.POST("/login", service.Login)
-	user := r.Group("/user")
+	r.POST("/api/register", service.Register)
+	r.POST("/api/login", service.Login)
 
-	user.GET("/upgradeWebSocket", service.UpgradeWebSocket)
+	user := r.Group("/api/user")
+	user.GET("/ws", utils.JWTAuthMiddlewareForWS(), service.UpgradeWebSocket)
+	user.GET("/friends", utils.JWTAuthMiddlewareForWS(), service.GetFriends)
+	user.POST("addfriend", utils.JWTAuthMiddlewareForWS(), service.AddFriend)
 	user.Use(utils.JWTAuthMiddleware())
 	{
 		user.POST("/updateUser", service.UpdateUser)
 		user.GET("/getUser", service.GetUser)
-
 	}
 
 	return r

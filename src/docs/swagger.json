@@ -37,7 +37,7 @@
                     {
                         "type": "string",
                         "description": "用户名",
-                        "name": "name",
+                        "name": "username",
                         "in": "formData"
                     },
                     {
@@ -67,7 +67,7 @@
                     {
                         "type": "string",
                         "description": "用户名",
-                        "name": "name",
+                        "name": "username",
                         "in": "formData"
                     },
                     {
@@ -168,7 +168,7 @@
                     {
                         "type": "string",
                         "description": "用户名",
-                        "name": "name",
+                        "name": "username",
                         "in": "formData"
                     },
                     {

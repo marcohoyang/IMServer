@@ -8,7 +8,7 @@ import (
 
 type IMUser struct {
 	gorm.Model
-	Name          string     `json:"name" gorm:"type:varchar(255);unique" binding:"required,max=255"`
+	Name          string     `json:"username" gorm:"type:varchar(255);unique" binding:"required,max=255"`
 	Password      string     `json:"password" gorm:"not null" binding:"required,min=6"`
 	Phone         string     `json:"phone" gorm:"type:varchar(20);unique" binding:"omitempty,e164"`
 	Email         *string    `json:"email" gorm:"type:varchar(255);unique;default:null" binding:"omitempty,email"`

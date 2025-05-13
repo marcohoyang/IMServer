@@ -1,7 +1,7 @@
 package rpcClient
 
 import (
-	"fmt"
+	"log"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -19,7 +19,7 @@ func InitClientPool(target string, opts ...grpc.DialOption) *ClientPool {
 			New: func() any {
 				conn, err := grpc.NewClient(target, opts...)
 				if err != nil {
-					fmt.Printf("did not connect: %v", err)
+					log.Printf("did not connect: %v", err)
 				}
 				return conn
 			},

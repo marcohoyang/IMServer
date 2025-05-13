@@ -21,7 +21,7 @@ paths:
       parameters:
       - description: 用户名
         in: formData
-        name: name
+        name: username
         type: string
       - description: 密码
         in: formData
@@ -40,7 +40,7 @@ paths:
       parameters:
       - description: 用户名
         in: formData
-        name: name
+        name: username
         type: string
       - description: 密码
         in: formData
@@ -101,7 +101,7 @@ paths:
         type: string
       - description: 用户名
         in: formData
-        name: name
+        name: username
         type: string
       - description: 密码
         in: formData

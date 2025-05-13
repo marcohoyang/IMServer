@@ -3,7 +3,7 @@ package conveter
 import (
 	"time"
 
-	"github.com/hoyang/imserver/src/dbproxy/models"
+	"github.com/hoyang/imserver/src/models"
 	im "github.com/hoyang/imserver/src/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
@@ -111,4 +111,40 @@ func convertProtoToTime(ts *timestamppb.Timestamp) *time.Time {
 	}
 	t := ts.AsTime()
 	return &t
+}
+
+// FriendView 转 Friend (单个)
+func FriendViewToProto(fv models.FriendView) *im.Friend {
+	return &im.Friend{
+		Id:     uint64(fv.ID),
+		Name:   fv.Username,
+		Online: fv.Online,
+	}
+}
+
+// Friend 转 FriendView (单个)
+func ProtoToFriendView(f *im.Friend) models.FriendView {
+	return models.FriendView{
+		ID:       uint(f.Id),
+		Username: f.Name,
+		Online:   f.Online,
+	}
+}
+
+// []FriendView 转 Friends (切片)
+func FriendViewsToProtos(fvs []models.FriendView) *im.Friends {
+	friends := &im.Friends{}
+	for _, fv := range fvs {
+		friends.Friendlist = append(friends.Friendlist, FriendViewToProto(fv))
+	}
+	return friends
+}
+
+// Friends 转 []FriendView (切片)
+func ProtosToFriendViews(fs *im.Friends) []models.FriendView {
+	var fvs []models.FriendView
+	for _, f := range fs.Friendlist {
+		fvs = append(fvs, ProtoToFriendView(f))
+	}
+	return fvs
 }

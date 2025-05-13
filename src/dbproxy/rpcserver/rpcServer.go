@@ -3,11 +3,11 @@ package grpc_server
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log"
 	"net"
 
 	"github.com/hoyang/imserver/src/conveter"
-	"github.com/hoyang/imserver/src/dbproxy/models"
+	"github.com/hoyang/imserver/src/models"
 	im "github.com/hoyang/imserver/src/proto"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
@@ -25,13 +25,13 @@ type server struct {
 func InitRpcServer(db *gorm.DB, redis *redis.Client) {
 	listen, err := net.Listen("tcp", ":50001")
 	if err != nil {
-		fmt.Printf("listen failed %v\n", err)
+		log.Printf("listen failed %v\n", err)
 	}
 	rpcServer := grpc.NewServer()
 	im.RegisterUserServiceServer(rpcServer, &server{db: db, redis: redis})
-	fmt.Printf("server listening at %v\n", listen.Addr())
+	log.Printf("server listening at %v\n", listen.Addr())
 	if err := rpcServer.Serve(listen); err != nil {
-		fmt.Printf("failed to serve: %v", err)
+		log.Printf("failed to serve: %v", err)
 	}
 }
 
@@ -40,15 +40,15 @@ func (s *server) PublishMsg(ctx context.Context, chanel string, msg string) {
 }
 
 func (s *server) CreateUser(ctx context.Context, user *im.IMUser) (*im.IMUser, error) {
-	fmt.Println("call CreateUser")
+	log.Println("call CreateUser")
 	dbUser := conveter.ToDBIMUser(user)
 	result := s.db.Create(dbUser)
 	if result.Error != nil {
 		// 处理错误
-		fmt.Printf("创建用户失败: %v\n", result.Error)
+		log.Printf("创建用户失败: %v\n", result.Error)
 		return nil, result.Error
 	}
-	fmt.Printf("创建用户成功, userId: %v \n", dbUser.ID)
+	log.Printf("创建用户成功, userId: %v \n", dbUser.ID)
 
 	*user = *conveter.ToPBIMUser(dbUser)
 	return user, nil
@@ -59,10 +59,10 @@ func (s *server) UpdateUser(ctx context.Context, user *im.IMUser) (*im.IMUser, e
 	result := s.db.Model(&dbUser).Updates(models.IMUser{Name: dbUser.Name, Password: dbUser.Password, Phone: dbUser.Phone, Email: dbUser.Email, Salt: dbUser.Salt})
 	if result.Error != nil {
 		// 处理错误
-		fmt.Printf("更新用户失败: %v\n", result.Error)
+		log.Printf("更新用户失败: %v\n", result.Error)
 		return nil, result.Error
 	}
-	fmt.Printf("更新用户成功, userId: %v\n", dbUser.ID)
+	log.Printf("更新用户成功, userId: %v\n", dbUser.ID)
 
 	*user = *conveter.ToPBIMUser(dbUser)
 	return user, nil
@@ -80,10 +80,39 @@ func (s *server) GetUser(ctx context.Context, req *im.UserRequest) (*im.IMUser, 
 			return nil, status.Errorf(codes.NotFound, "用户 %s 不存在", req.Name)
 		}
 		// 其他错误
-		fmt.Printf("查询数据库失败: %v\n", result.Error)
+		log.Printf("查询数据库失败: %v\n", result.Error)
 		return nil, status.Errorf(codes.Internal, "服务器内部错误")
 	}
 
-	fmt.Printf("查询用户成功, userId: %v\n", dbUser.ID)
+	log.Printf("查询用户成功, userId: %v\n", dbUser.ID)
 	return conveter.ToPBIMUser(&dbUser), nil
+}
+
+func (s *server) GetFriends(ctx context.Context, req *im.UserRequest) (*im.Friends, error) {
+	var friends []models.FriendView
+	// 执行连表查询
+	err := s.db.Table("contact_table uf").
+		Select(`
+            u.id,
+            u.name as username,
+            u.is_logout,
+            uf.status,
+            uf.created_at
+        `).
+		Joins("JOIN user_basic u ON uf.target_id = u.id").
+		Where("uf.owner_id  = (?)", req.Id).
+		//Where("uf.status = ?", "accepted"). // 只返回已接受的好友关系
+		Order("uf.created_at DESC"). // 按创建时间排序
+		Find(&friends).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Println("返回空列表")
+			return &im.Friends{}, nil // 返回空列表而不是错误
+		}
+		return nil, err
+	}
+	friendsView := conveter.FriendViewsToProtos(friends)
+
+	return friendsView, nil
 }
