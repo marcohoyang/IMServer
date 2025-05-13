@@ -52,7 +52,9 @@ func (s *ChatService) Subscription() {
 			log.Println("Subscription revice:", msg)
 			message, _ := models.MessageFromString(msg)
 			log.Println("targetId,", message.TargetId)
+			s.rwLocker.RLock()
 			node := s.clientMap[message.TargetId]
+			s.rwLocker.RUnlock()
 			if node != nil {
 				node.DataQueue <- message
 			}
@@ -88,10 +90,9 @@ func (s *ChatService) Chat(c *gin.Context) {
 		})
 		return
 	}
-	s.rwLocker.RLock()
-
+	s.rwLocker.Lock()
 	s.clientMap[userId.(uint)] = node
-	s.rwLocker.RUnlock()
+	s.rwLocker.Unlock()
 
 	log.Println("升级websocke成功")
 	response := map[string]interface{}{

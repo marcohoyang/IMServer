@@ -116,3 +116,39 @@ func (s *server) GetFriends(ctx context.Context, req *im.UserRequest) (*im.Frien
 
 	return friendsView, nil
 }
+
+func (s *server) AddFriend(ctx context.Context, contact *im.Contact) (*im.AddResponse, error) {
+	resp := im.AddResponse{Success: true}
+
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		resp.Success = false
+		return &resp, tx.Error
+	}
+
+	userShip1 := models.Contact{OwnerId: uint(contact.OwnerId), TargetId: uint(contact.TargetId), Status: "accepted"}
+	result := s.db.Create(&userShip1)
+	// 检查插入是否成功
+
+	if result.Error != nil {
+		tx.Rollback()
+		resp.Success = false
+		return &resp, result.Error
+	}
+
+	userShip2 := models.Contact{OwnerId: uint(contact.TargetId), TargetId: uint(contact.OwnerId), Status: "accepted"}
+	result = s.db.Create(&userShip2)
+	// 检查插入是否成功
+
+	if result.Error != nil {
+		tx.Rollback()
+		resp.Success = false
+		return &resp, result.Error
+	}
+	if tx.Commit().Error != nil {
+		resp.Success = false
+		return &resp, result.Error
+	}
+
+	return &resp, nil
+}

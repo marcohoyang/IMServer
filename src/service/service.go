@@ -135,12 +135,54 @@ type AddFriendReq struct {
 	FriendUsername string `json:"friendUsername"`
 }
 
-func AddFriend(c *gin.Context) {
+func (s *UserService) AddFriend(c *gin.Context) {
 	var addFriendReq AddFriendReq
 	if err := c.ShouldBindJSON(&addFriendReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
 		return
 	}
+
+	user := models.IMUser{}
+	user.Name = addFriendReq.FriendUsername
+	friend, err := s.getUser(&user)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "用户不存在",
+		})
+		return
+	}
+	var userShips models.Contact
+	userShips.OwnerId = addFriendReq.UserID
+	userShips.TargetId = friend.ID
+	err = s.addFriend(&userShips)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "添加好友失败",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "添加好友成功",
+	})
+}
+
+func (s *UserService) addFriend(userShips *models.Contact) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	conn := s.pool.Get()
+	defer s.pool.Put(conn)
+	client := im.NewUserServiceClient(conn)
+	contact := im.Contact{}
+	contact.OwnerId = uint64(userShips.OwnerId)
+	contact.TargetId = uint64(userShips.TargetId)
+	_, err := client.AddFriend(ctx, &contact)
+	if err != nil {
+		log.Printf("addFriend failed %v\n", err)
+		return err
+	}
+
+	return nil
 }
 
 // Register
@@ -171,7 +213,8 @@ func (s *UserService) Register(c *gin.Context) {
 	salt := fmt.Sprintf("%06d", rand.Int31())
 	user.Password = utils.MakePassword(password, salt)
 	user.Salt = salt
-	user.Phone = c.PostForm("phone")
+	Phone := c.PostForm("phone")
+	user.Phone = &Phone
 	email := c.PostForm("email")
 	user.Email = &email
 
@@ -231,7 +274,8 @@ func (s *UserService) UpdateUser(c *gin.Context) {
 	user.ID = uint(id)
 	user.Name = c.PostForm("username")
 	password := c.PostForm("password")
-	user.Phone = c.PostForm("phone")
+	Phone := c.PostForm("phone")
+	user.Phone = &Phone
 	email := c.PostForm("email")
 	user.Email = &email
 

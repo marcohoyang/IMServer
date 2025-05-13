@@ -12,6 +12,7 @@ service UserService {
   rpc UpdateUser (IMUser) returns (IMUser);
   rpc DeleteUser (UserRequest) returns (DeleteResponse);
   rpc GetFriends (UserRequest) returns (Friends);
+  rpc AddFriend (Contact) returns (AddResponse);
 }
 
 message Friends {
@@ -31,6 +32,10 @@ message UserRequest {
 }
 
 message DeleteResponse {
+  bool success = 1;
+}
+
+message AddResponse {
   bool success = 1;
 }
 
@@ -59,4 +64,16 @@ message IMUser {
   string device = 15;
   bool is_logout = 16;
   string salt = 17;
+}
+
+message Contact {
+  // 基础字段
+  uint64 id = 1;  // 对应 gorm.Model 的 ID
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+
+  uint64 OwnerId = 5;
+	uint64 TargetId = 6;
+	string Status = 7;
 }

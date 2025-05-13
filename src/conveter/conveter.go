@@ -22,8 +22,8 @@ func ToPBIMUser(dbUser *models.IMUser) *im.IMUser {
 		DeletedAt:     timeToProto(dbUser.DeletedAt.Time),
 		Name:          dbUser.Name,
 		Password:      dbUser.Password, // 注意：生产环境不应传输密码
-		Phone:         dbUser.Phone,
-		Email:         convertEmailToProto(dbUser.Email),
+		Phone:         convertPointerToString(dbUser.Phone),
+		Email:         convertPointerToString(dbUser.Email),
 		LoginTime:     convertTimeToProto(dbUser.LoginTime),
 		LogoutTime:    convertTimeToProto(dbUser.LogoutTime),
 		HeartbeatTime: convertTimeToProto(dbUser.HeartbeatTime),
@@ -54,8 +54,8 @@ func ToDBIMUser(pbUser *im.IMUser) *models.IMUser {
 		},
 		Name:          pbUser.GetName(),
 		Password:      pbUser.GetPassword(),
-		Phone:         pbUser.GetPhone(),
-		Email:         convertProtoToEmail(pbUser.GetEmail()),
+		Phone:         convertStringToPointer(pbUser.GetPhone()),
+		Email:         convertStringToPointer(pbUser.GetEmail()),
 		LoginTime:     convertProtoToTime(pbUser.GetLoginTime()),
 		LogoutTime:    convertProtoToTime(pbUser.GetLogoutTime()),
 		HeartbeatTime: convertProtoToTime(pbUser.GetHeartbeatTime()),
@@ -68,14 +68,14 @@ func ToDBIMUser(pbUser *im.IMUser) *models.IMUser {
 	}
 }
 
-func convertEmailToProto(str *string) string {
+func convertPointerToString(str *string) string {
 	if str == nil {
 		return ""
 	}
 	return *str
 }
 
-func convertProtoToEmail(str string) *string {
+func convertStringToPointer(str string) *string {
 	if str == "" {
 		return nil
 	}
