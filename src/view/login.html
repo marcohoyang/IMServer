@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时聊天应用</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#00B42A',
+                        dark: '#1D2129',
+                        light: '#F2F3F5',
+                        danger: '#F53F3F'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+            .animate-pulse-slow {
+                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .bg-gradient-primary {
+                background: linear-gradient(135deg, #165DFF 0%, #4080FF 100%);
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 min-h-screen flex flex-col">
+    <!-- 登录界面容器 -->
+    <div id="login-container" class="flex-1 flex items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl">
+                <div class="bg-gradient-primary p-8 text-white">
+                    <h1 class="text-[clamp(1.8rem,5vw,2.5rem)] font-bold mb-2">欢迎回来</h1>
+                    <p class="text-blue-100 opacity-90">请登录您的账号继续</p>
+                </div>
+                <div class="p-8">
+                    <form id="login-form" class="space-y-5">
+                        <div>
+                            <label for="username" class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fa fa-user"></i>
+                                </span>
+                                <input type="text" id="username" name="username" placeholder="请输入用户名" 
+                                    class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                                    required>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fa fa-lock"></i>
+                                </span>
+                                <input type="password" id="password" name="password" placeholder="请输入密码" 
+                                    class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                                    required>
+                                <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-primary transition-colors">
+                                    <i class="fa fa-eye-slash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary/20 border-gray-300 rounded">
+                                <label for="remember-me" class="ml-2 block text-sm text-gray-700">记住我</label>
+                            </div>
+                            <a href="#" class="text-sm font-medium text-primary hover:text-primary/80 transition-colors">忘记密码?</a>
+                        </div>
+                        <button type="submit" id="login-button" 
+                            class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center">
+                            <span>登录</span>
+                            <i class="fa fa-arrow-right ml-2"></i>
+                        </button>
+                    </form>
+                    <div class="mt-8 text-center">
+                        <p class="text-gray-600">
+                            还没有账号? <a href="#" id="show-register-form" class="font-medium text-primary hover:text-primary/80 transition-colors">立即注册</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 text-center text-gray-500 text-sm">
+                <p>© 2025 实时聊天应用 - 保护您的隐私和安全</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 注册界面容器 (默认隐藏) -->
+    <div id="register-container" class="hidden flex-1 flex items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl">
+                <div class="bg-gradient-primary p-8 text-white">
+                    <h1 class="text-[clamp(1.8rem,5vw,2.5rem)] font-bold mb-2">注册新账号</h1>
+                    <p class="text-blue-100 opacity-90">请填写以下信息进行注册</p>
+                </div>
+                <div class="p-8">
+                    <form id="register-form" class="space-y-5">
+                        <div>
+                            <label for="register-username" class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fa fa-user"></i>
+                                </span>
+                                <input type="text" id="register-username" name="register-username" placeholder="请输入用户名" 
+                                    class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                                    required>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="register-password" class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fa fa-lock"></i>
+                                </span>
+                                <input type="password" id="register-password" name="register-password" placeholder="请输入密码" 
+                                    class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                                    required>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="confirm-password" class="block text-sm font-medium text-gray-700 mb-1">确认密码</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fa fa-lock"></i>
+                                </span>
+                                <input type="password" id="confirm-password" name="confirm-password" placeholder="请再次输入密码" 
+                                    class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                                    required>
+                            </div>
+                        </div>
+                        <button type="submit" id="register-button" 
+                            class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center">
+                            <span>注册</span>
+                            <i class="fa fa-arrow-right ml-2"></i>
+                        </button>
+                    </form>
+                    <div class="mt-8 text-center">
+                        <p class="text-gray-600">
+                            已有账号? <a href="#" id="show-login-form" class="font-medium text-primary hover:text-primary/80 transition-colors">立即登录</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 text-center text-gray-500 text-sm">
+                <p>© 2025 实时聊天应用 - 保护您的隐私和安全</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 聊天界面容器 (默认隐藏) -->
+    <div id="chat-container" class="hidden flex-1 flex flex-col h-screen">
+        <!-- 顶部导航栏 -->
+        <header class="bg-white border-b border-gray-200 py-3 px-4 flex items-center justify-between shadow-sm">
+            <div class="flex items-center">
+                <button id="toggle-sidebar" class="p-2 rounded-full hover:bg-gray-100 transition-colors lg:hidden">
+                    <i class="fa fa-bars text-gray-600"></i>
+                </button>
+                <h1 class="ml-2 text-xl font-bold text-dark">实时聊天</h1>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button class="p-2 rounded-full hover:bg-gray-100 transition-colors relative">
+                    <i class="fa fa-bell text-gray-600"></i>
+                    <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                </button>
+                <div class="relative">
+                    <button id="user-menu-button" class="flex items-center space-x-2 focus:outline-none">
+                        <img src="https://picsum.photos/200/200" alt="用户头像" class="w-8 h-8 rounded-full object-cover border-2 border-primary">
+                        <span class="hidden md:inline-block font-medium text-gray-700">用户名</span>
+                        <i class="fa fa-angle-down text-gray-500"></i>
+                    </button>
+                    <!-- 用户菜单 (默认隐藏) -->
+                    <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10">
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">个人资料</a>
+                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">设置</a>
+                        <div class="border-t border-gray-100 my-1"></div>
+                        <a href="#" id="logout-button" class="block px-4 py-2 text-sm text-danger hover:bg-gray-100">退出登录</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 flex overflow-hidden">
+            <!-- 侧边栏 (桌面端始终显示，移动端可隐藏) -->
+            <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 lg:translate-x-0 -translate-x-full lg:relative absolute h-full z-20">
+                <div class="p-4 border-b border-gray-200">
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                            <i class="fa fa-search"></i>
+                        </span>
+                        <input type="text" placeholder="搜索好友..." 
+                            class="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-100 border-transparent focus:border-primary focus:bg-white focus:ring-0 transition-all">
+                    </div>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto scrollbar-hide">
+                    <div class="p-3">
+                        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">在线好友</h2>
+                        <div id="friends-list" class="mt-2 space-y-1">
+                            <!-- 好友列表将通过JS动态填充 -->
+                        </div>
+                    </div>
+                    
+                    <div class="p-3 border-t border-gray-200">
+                        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">最近聊天</h2>
+                        <div class="mt-2 space-y-1">
+                            <!-- 最近聊天记录 -->
+                            <a href="#" class="flex items-center p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                                <img src="https://picsum.photos/200/201" alt="好友头像" class="w-8 h-8 rounded-full object-cover">
+                                <div class="ml-3 flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-900 truncate">张三</p>
+                                    <p class="text-xs text-gray-500 truncate">最近消息内容...</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-gray-500">12:34</p>
+                                    <span class="mt-1 inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-white bg-primary rounded-full">2</span>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-4 border-t border-gray-200">
+                    <button class="w-full bg-primary/10 hover:bg-primary/20 text-primary font-medium py-2 px-4 rounded-lg transition-all flex items-center justify-center">
+                        <i class="fa fa-plus mr-2"></i>
+                        <span>新建聊天</span>
+                    </button>
+                </div>
+            </aside>
+            
+            <!-- 遮罩层 (移动端侧边栏打开时显示) -->
+            <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"></div>
+            
+            <!-- 主聊天区域 -->
+            <main class="flex-1 flex flex-col bg-gray-50">
+                <!-- 当前聊天对象信息 -->
+                <div class="bg-white border-b border-gray-200 py-3 px-4 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center">
+                        <button id="back-button" class="p-2 rounded-full hover:bg-gray-100 transition-colors lg:hidden">
+                            <i class="fa fa-arrow-left text-gray-600"></i>
+                        </button>
+                        <img src="https://picsum.photos/200/201" alt="当前聊天对象头像" class="w-9 h-9 rounded-full object-cover ml-2">
+                        <div class="ml-3">
+                            <p class="text-xs text-green-500">在线</p>
+                            <h3 class="text-sm font-medium text-gray-900">张三</h3>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                            <i class="fa fa-phone text-gray-600"></i>
+                        </button>
+                        <button class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                            <i class="fa fa-video text-gray-600"></i>
+                        </button>
+                        <button class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                            <i class="fa fa-ellipsis-v text-gray-600"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 聊天消息区域 -->
+                <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+                    <!-- 日期分隔线 -->
+                    <div class="flex items-center justify-center">
+                        <span class="px-3 py-1 text-xs font-medium bg-gray-200 text-gray-500 rounded-full">今天</span>
+                    </div>
+                    
+                    <!-- 对方消息 -->
+                    <div class="flex items-start">
+                        <img src="https://picsum.photos/200/201" alt="对方头像" class="w-8 h-8 rounded-full object-cover">
+                        <div class="ml-2 max-w-[80%]">
+                            <div class="bg-white rounded-lg rounded-tl-none shadow-sm p-3">
+                                <p class="text-sm text-gray-800">你好，今天过得怎么样？</p>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">12:30</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 自己消息 -->
+                    <div class="flex items-start justify-end">
+                        <div class="mr-2 max-w-[80%]">
+                            <div class="bg-primary text-white rounded-lg rounded-tr-none shadow-sm p-3">
+                                <p class="text-sm">我很好，谢谢！你呢？</p>
+                            </div>
+                            <div class="flex items-center justify-end mt-1">
+                                <p class="text-xs text-gray-500">12:32</p>
+                                <i class="fa fa-check-double ml-1 text-blue-300"></i>
+                            </div>
+                        </div>
+                        <img src="https://picsum.photos/200/200" alt="自己头像" class="w-8 h-8 rounded-full object-cover">
+                    </div>
+                    
+                    <!-- 系统消息 -->
+                    <div class="flex items-center justify-center">
+                        <span class="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-500 rounded-full">正在输入...</span>
+                    </div>
+                </div>
+                
+                <!-- 消息输入区域 -->
+                <div class="bg-white border-t border-gray-200 p-4">
+                    <div class="flex items-center mb-2">
+                        <button class="p-2 text-gray-500 hover:text-primary rounded-full hover:bg-gray-100 transition-colors">
+                            <i class="fa fa-smile-o"></i>
+                        </button>
+                        <button class="p-2 text-gray-500 hover:text-primary rounded-full hover:bg-gray-100 transition-colors">
+                            <i class="fa fa-paperclip"></i>
+                        </button>
+                        <button class="p-2 text-gray-500 hover:text-primary rounded-full hover:bg-gray-100 transition-colors">
+                            <i class="fa fa-image"></i>
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <textarea id="message-input" placeholder="输入消息..." rows="1" 
+                            class="w-full pl-4 pr-12 py-2 rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none outline-none"></textarea>
+                        <button id="send-button" class="absolute right-2 bottom-2 p-2 bg-primary text-white rounded-full hover:bg-primary/90 transition-colors">
+                            <i class="fa fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // API配置
+        const API_BASE_URL = '';
+        
+        // DOM元素
+        const loginContainer = document.getElementById('login-container');
+        const registerContainer = document.getElementById('register-container');
+        const chatContainer = document.getElementById('chat-container');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const registerUsernameInput = document.getElementById('register-username');
+        const registerPasswordInput = document.getElementById('register-password');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        const togglePassword = document.getElementById('toggle-password');
+        const loginButton = document.getElementById('login-button');
+        const registerButton = document.getElementById('register-button');
+        const logoutButton = document.getElementById('logout-button');
+        const userMenuButton = document.getElementById('user-menu-button');
+        const userMenu = document.getElementById('user-menu');
+        const toggleSidebar = document.getElementById('toggle-sidebar');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const backButton = document.getElementById('back-button');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const messagesContainer = document.getElementById('messages-container');
+        const friendsList = document.getElementById('friends-list');
+        const showRegisterForm = document.getElementById('show-register-form');
+        const showLoginForm = document.getElementById('show-login-form');
+
+        // 获取Cookie值
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        // 检查用户是否已登录
+        function checkLoggedIn() {
+            const token = getCookie('token');
+            const username = localStorage.getItem('chat_username');
+            
+            if (token && username) {
+                loginContainer.classList.add('hidden');
+                registerContainer.classList.add('hidden');
+                chatContainer.classList.remove('hidden');
+                
+                // 设置用户名
+                document.querySelector('#user-menu-button span').textContent = username;
+                
+                // 获取并显示好友列表
+                loadFriendsList();
+                
+                // 建立WebSocket连接
+                establishWebSocket();
+                
+                // 自动调整消息输入框高度
+                autoResizeTextarea();
+            }
+        }
+
+        // 登录处理
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            // 显示加载状态
+            loginButton.disabled = true;
+            loginButton.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i><span>登录中...</span>';
+            
+            try {
+                // 发送登录请求，确保携带Cookie
+                const response = await fetch(`${API_BASE_URL}/api/login`, {
+                    method: 'POST',
+                    credentials: 'include', // 携带Cookie
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `登录失败: ${response.status}`);
+                }
+                
+                // 验证Cookie是否存在
+                const token = getCookie('token');
+                if (!token) {
+                    // 尝试从响应头中获取Set-Cookie
+                    const setCookieHeader = response.headers.get('set-cookie');
+                    if (setCookieHeader && setCookieHeader.includes('token=')) {
+                        console.log('检测到Set-Cookie头，但浏览器可能阻止了Cookie存储');
+                        console.log('Set-Cookie头内容:', setCookieHeader);
+                    }
+                    
+                    throw new Error('登录成功但未接收到认证Cookie');
+                }
+                 const responseData = await response.json();
+                 const userID = responseData.userID;
+                // 存储用户名
+                localStorage.setItem('chat_username', username);
+                localStorage.setItem('user_id', userID);
+                
+                // 切换到聊天界面
+                loginContainer.classList.add('hidden');
+                registerContainer.classList.add('hidden');
+                chatContainer.classList.remove('hidden');
+                
+                // 获取并显示好友列表
+                await loadFriendsList();
+                
+                // 建立WebSocket连接
+                establishWebSocket();
+                
+                // 设置用户名
+                document.querySelector('#user-menu-button span').textContent = username;
+                
+                // 显示登录成功消息
+                showNotification('登录成功', '欢迎回来，' + username);
+            } catch (error) {
+                console.error('登录错误:', error);
+                showNotification('登录失败', error.message, 'error');
+            } finally {
+                // 恢复按钮状态
+                loginButton.disabled = false;
+                loginButton.innerHTML = '<span>登录</span><i class="fa fa-arrow-right ml-2"></i>';
+            }
+        });
+
+        // 注册处理
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = registerUsernameInput.value.trim();
+            const password = registerPasswordInput.value.trim();
+            const confirmPassword = confirmPasswordInput.value.trim();
+
+            if (password !== confirmPassword) {
+                showNotification('注册失败', '两次输入的密码不一致', 'error');
+                return;
+            }
+
+            // 显示加载状态
+            registerButton.disabled = true;
+            registerButton.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i><span>注册中...</span>';
+
+            try {
+                // 发送注册请求，确保携带Cookie
+                const response = await fetch(`${API_BASE_URL}/api/register`, {
+                    method: 'POST',
+                    credentials: 'include', // 携带Cookie
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `注册失败: ${response.status}`);
+                }
+
+                showNotification('注册成功', '您已成功注册，请登录', 'success');
+
+                // 切换到登录界面
+                registerContainer.classList.add('hidden');
+                loginContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('注册错误:', error);
+                showNotification('注册失败', error.message, 'error');
+            } finally {
+                // 恢复按钮状态
+                registerButton.disabled = false;
+                registerButton.innerHTML = '<span>注册</span><i class="fa fa-arrow-right ml-2"></i>';
+            }
+        });
+
+        // 登出处理
+        logoutButton.addEventListener('click', async () => {
+            try {
+                // 发送登出请求，确保携带Cookie
+                const response = await fetch(`${API_BASE_URL}/api/logout`, {
+                    method: 'POST',
+                    credentials: 'include' // 携带Cookie
+                });
+                
+                if (!response.ok) {
+                    throw new Error('登出失败');
+                }
+                
+                // 移除本地存储
+                localStorage.removeItem('chat_username');
+                
+                // 关闭WebSocket连接
+                if (socket) {
+                    socket.close();
+                }
+                
+                // 切换回登录界面
+                chatContainer.classList.add('hidden');
+                loginContainer.classList.remove('hidden');
+                registerContainer.classList.add('hidden');
+                
+                // 清空表单
+                usernameInput.value = '';
+                passwordInput.value = '';
+                registerUsernameInput.value = '';
+                registerPasswordInput.value = '';
+                confirmPasswordInput.value = '';
+                
+                // 隐藏用户菜单
+                userMenu.classList.add('hidden');
+                
+                // 显示登出成功消息
+                showNotification('登出成功', '您已安全退出');
+            } catch (error) {
+                console.error('登出错误:', error);
+                showNotification('登出失败', error.message, 'error');
+            }
+        });
+
+        // 显示通知
+        function showNotification(title, message, type = 'success') {
+            // 创建通知元素
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg transform transition-all duration-500 z-50 ${
+                type === 'error' ? 'bg-danger text-white' : 'bg-secondary text-white'
+            } translate-x-full opacity-0`;
+            
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fa ${type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium">${title}</h3>
+                        <div class="mt-1 text-xs">
+                            <p>${message}</p>
+                        </div>
+                    </div>
+                    <button class="ml-4 text-white hover:text-gray-200 focus:outline-none">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            // 添加到页面
+            document.body.appendChild(notification);
+            
+            // 显示动画
+            setTimeout(() => {
+                notification.classList.remove('translate-x-full', 'opacity-0');
+            }, 100);
+            
+            // 关闭按钮
+            const closeButton = notification.querySelector('button');
+            closeButton.addEventListener('click', () => {
+                notification.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 500);
+            });
+            
+            // 自动关闭
+            setTimeout(() => {
+                notification.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 500);
+            }, 5000);
+        }
+
+        // 切换密码可见性
+        togglePassword.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            // 切换图标
+            const icon = togglePassword.querySelector('i');
+            if (type === 'text') {
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            } else {
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            }
+        });
+
+        // 用户菜单切换
+        userMenuButton.addEventListener('click', () => {
+            userMenu.classList.toggle('hidden');
+        });
+
+        // 点击其他区域关闭用户菜单
+        document.addEventListener('click', (e) => {
+            if (!userMenuButton.contains(e.target) && !userMenu.contains(e.target)) {
+                userMenu.classList.add('hidden');
+            }
+        });
+
+        // 移动端侧边栏切换
+        toggleSidebar.addEventListener('click', () => {
+            sidebar.classList.toggle('-translate-x-full');
+            sidebarOverlay.classList.toggle('hidden');
+        });
+
+        backButton.addEventListener('click', () => {
+            sidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+        });
+
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+        });
+
+        // 自动调整文本框高度
+        function autoResizeTextarea() {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = (messageInput.scrollHeight) + 'px';
+        }
+
+        messageInput.addEventListener('input', autoResizeTextarea);
+
+        // 发送消息
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message) {
+                // 显示自己发送的消息
+                appendMessage(message, 'self');
+                
+                // 清空输入框
+                messageInput.value = '';
+                autoResizeTextarea();
+
+                const formId = localStorage.getItem('user_id');
+                const targetId = currentChatFriendId;
+
+                const messageObj = {
+                    FormId: parseInt(formId),
+                    TargetId: parseInt(targetId),
+                    Type: 1,         // 1表示私聊（根据业务调整）
+                    Media: 1,        // 1表示文本消息（根据业务调整）
+                    Content: btoa(unescape(encodeURIComponent(message))), // 文本转Base64
+                    Pic: "",         // 图片URL（文本消息为空）
+                    Url: "",         // 链接（文本消息为空）
+                    Desc: "",        // 描述（文本消息为空）
+                };
+                const jsonString = JSON.stringify(messageObj);
+                //const byteArray = new TextEncoder().encode(jsonString);
+                
+                // 发送消息到服务器
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(jsonString);
+                }
+            }
+        }
+
+        // 添加消息到聊天窗口
+        function appendMessage(message, type) {
+            const messagesContainer = document.getElementById('messages-container');
+            if (!messagesContainer) return;
+            
+            const messageElement = document.createElement('div');
+            messageElement.className = type === 'self' 
+                ? 'flex items-start justify-end' 
+                : 'flex items-start';
+            
+            if (type === 'self') {
+                messageElement.innerHTML = `
+                    <div class="mr-2 max-w-[80%]">
+                        <div class="bg-primary text-white rounded-lg rounded-tr-none shadow-sm p-3">
+                            <p class="text-sm">${message}</p>
+                        </div>
+                        <div class="flex items-center justify-end mt-1">
+                            <p class="text-xs text-gray-500">刚刚</p>
+                            <i class="fa fa-check ml-1 text-blue-300"></i>
+                        </div>
+                    </div>
+                    <img src="https://picsum.photos/200/200" alt="自己头像" class="w-8 h-8 rounded-full object-cover">
+                `;
+            } else {
+                messageElement.innerHTML = `
+                    <img src="https://picsum.photos/200/201" alt="对方头像" class="w-8 h-8 rounded-full object-cover">
+                    <div class="ml-2 max-w-[80%]">
+                        <div class="bg-white rounded-lg rounded-tl-none shadow-sm p-3">
+                            <p class="text-sm text-gray-800">${message}</p>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">刚刚</p>
+                    </div>
+                `;
+            }
+            
+            // 移除"正在输入"提示
+            const typingIndicator = messagesContainer.querySelector('.flex.items-center.justify-center');
+            if (typingIndicator) {
+                messagesContainer.removeChild(typingIndicator);
+            }
+            
+            // 添加新消息
+            messagesContainer.appendChild(messageElement);
+            
+            // 滚动到底部
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        let currentChatFriendId = null; 
+
+        // 加载好友列表
+        async function loadFriendsList() {
+            try {
+                // 发送获取好友列表请求，确保携带Cookie
+                const response = await fetch(`${API_BASE_URL}/api/user/friends`, {
+                    credentials: 'include' // 携带Cookie
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `获取好友列表失败: ${response.status}`);
+                }
+                
+                const friends = await response.json();
+                const friendsList = document.getElementById('friends-list');
+                
+                if (friendsList) {
+                    // 清空好友列表
+                    friendsList.innerHTML = '';
+                    
+                    // 添加好友
+                    friends.forEach(friend => {
+                        const friendElement = document.createElement('a');
+                        friendElement.href = '#';
+                        friendElement.className = 'flex items-center p-2 rounded-lg hover:bg-gray-100 transition-colors';
+                        friendElement.dataset.id = friend.id
+                        friendElement.innerHTML = `
+                            <div class="relative">
+                                <img src="https://picsum.photos/200/211" alt="${friend.username}头像" class="w-8 h-8 rounded-full object-cover">
+                                ${friend.online ? '<span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>' : ''}
+                            </div>
+                            <div class="ml-3 flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-900 truncate">${friend.username}</p>
+                                <p class="text-xs text-gray-500 truncate">${friend.online ? '在线' : '在线'}</p>
+                            </div>
+                        `;
+                        // 添加点击事件
+                        friendElement.addEventListener('click', () => {
+                            // 移除之前的选中状态
+                            document.querySelectorAll('#friends-list a').forEach(el => {
+                                el.classList.remove('bg-gray-100');
+                            });
+                            currentChatFriendId = friend.id
+                            
+                            // 添加选中状态
+                            friendElement.classList.add('bg-gray-100');
+                            
+                            // 更新当前聊天对象信息
+                            document.querySelector('#messages-container').innerHTML = `
+                                <div class="flex items-center justify-center">
+                                    <span class="px-3 py-1 text-xs font-medium bg-gray-200 text-gray-500 rounded-full">今天</span>
+                                </div>
+                            `;
+                            document.querySelector('#chat-container h3').textContent = friend.username;
+                            document.querySelector('#chat-container p').textContent = friend.online ? '在线' : '离线';
+                            document.querySelector('#chat-container img').src = "https://picsum.photos/200/201";
+                            
+                            
+                            // 在移动端上关闭侧边栏
+                            if (window.innerWidth < 1024) {
+                                const sidebar = document.getElementById('sidebar');
+                                const sidebarOverlay = document.getElementById('sidebar-overlay');
+                                if (sidebar && sidebarOverlay) {
+                                    sidebar.classList.add('-translate-x-full');
+                                    sidebarOverlay.classList.add('hidden');
+                                }
+                            }
+                        });
+                        
+                        friendsList.appendChild(friendElement);
+                    });
+                }
+            } catch (error) {
+                console.error('获取好友列表失败:', error);
+                showNotification('加载失败', error.message, 'error');
+            }
+        }
+
+        // WebSocket连接
+        let socket;
+        
+        function establishWebSocket() {
+            try {
+                // 创建WebSocket连接，使用相同域名确保Cookie自动发送
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                socket = new WebSocket(`${wsProtocol}//${window.location.host}/api/user/ws`);
+                
+                // 连接成功
+                socket.onopen = () => {
+                    console.log('WebSocket连接已建立');
+                    showNotification('连接成功', '已成功连接到聊天服务器');
+                };
+                
+                // 接收到消息
+                socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('收到消息', event);
+                        // 处理不同类型的消息
+                        if (data.Type === 1) {
+                            const content = decodeURIComponent(escape(atob(data.Content)));
+                            appendMessage(content, 'other');
+                        } else if (data.Type === 2) {
+                            showNotification('通知', data.content);
+                        } else if (data.Type === 3) {
+                            showNotification('错误', data.content, 'error');
+                        }
+                    } catch (error) {
+                        console.error('解析WebSocket消息失败:', error);
+                        showNotification('消息解析失败', error.message, 'error');
+                    }
+                };
+                
+                // 连接关闭
+                socket.onclose = (event) => {
+                    console.log('WebSocket连接已关闭', event);
+                    showNotification('连接断开', '与聊天服务器的连接已断开，正在尝试重连...', 'error');
+                    
+                    // 尝试重连
+                    setTimeout(() => {
+                        establishWebSocket();
+                    }, 5000);
+                };
+                
+                // 连接错误
+                socket.onerror = (error) => {
+                    console.error('WebSocket错误:', error);
+                    showNotification('连接错误', '与聊天服务器的连接发生错误', 'error');
+                };
+            } catch (error) {
+                console.error('建立WebSocket连接失败:', error);
+                showNotification('连接失败', '无法连接到聊天服务器', 'error');
+                
+                // 尝试重连
+                setTimeout(() => {
+                    establishWebSocket();
+                }, 5000);
+            }
+        }
+
+        // 显示注册表单
+        showRegisterForm.addEventListener('click', () => {
+            loginContainer.classList.add('hidden');
+            registerContainer.classList.remove('hidden');
+        });
+
+        // 显示登录表单
+        showLoginForm.addEventListener('click', () => {
+            registerContainer.classList.add('hidden');
+            loginContainer.classList.remove('hidden');
+        });
+
+        // 页面加载时检查是否已登录
+        //document.addEventListener('DOMContentLoaded', checkLoggedIn);
+    </script>
+</body>
+</html>    
