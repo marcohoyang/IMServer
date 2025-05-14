@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/redis/go-redis/v9"
@@ -32,4 +33,14 @@ func Subscription(redis *redis.Client, ctx context.Context, channel string) (str
 	msg, err := pubsub.ReceiveMessage(ctx)
 	log.Println(msg.String())
 	return msg.Payload, err
+}
+
+// 生成用户缓存键
+func UserCacheKey(userID uint64) string {
+	return fmt.Sprintf("user:%d", userID)
+}
+
+// 生成好友列表缓存键
+func FriendsCacheKey(userID uint64) string {
+	return fmt.Sprintf("friends:%d", userID)
 }

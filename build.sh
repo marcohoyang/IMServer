@@ -140,30 +140,5 @@ echo -e "${YELLOW}生成的代码位于: $OUTPUT_DIR${NC}"
 echo -e "${YELLOW}可执行文件位于: $BUILD_DIR${NC}"
 echo -e "${YELLOW}=========================${NC}"
 
-echo -e "${GREEN}是否需要运行应用程序? (y/n)${NC}"
-read -r run_option
+(cd "$DBPROXY_DIR" && "$BUILD_DIR/main" & "$BUILD_DIR/dbproxy")
 
-if [ "$run_option" = "y" ] || [ "$run_option" = "Y" ]; then
-    echo -e "${GREEN}选择要运行的程序:${NC}"
-    echo -e "1. main"
-    echo -e "2. 全部"
-    read -r program_option
-    
-    case "$program_option" in
-        1)
-            echo -e "${GREEN}运行 main...${NC}"
-            (cd "$DBPROXY_DIR" && "$BUILD_DIR/main")
-            ;;
-        2)
-            echo -e "${GREEN}运行 main 和 dbproxy...${NC}"
-            echo -e "${YELLOW}注意：同时运行多个程序可能需要在后台执行${NC}"
-            (cd "$DBPROXY_DIR" && "$BUILD_DIR/main" & "$BUILD_DIR/dbproxy")
-            ;;
-        *)
-            echo -e "${RED}无效选择，退出${NC}"
-            exit 1
-            ;;
-    esac
-else
-    echo -e "${GREEN}构建完成，未运行应用程序${NC}"
-fi
