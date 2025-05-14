@@ -9,7 +9,7 @@ fi
 token=$1
 
 # 设置测试的目标URL
-url="http://localhost:8080/api/user/friends"
+url="http://116.62.116.22:8080/api/user/friends"
 
 # 设置并发数和请求总数
 concurrency=100

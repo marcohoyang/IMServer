@@ -175,8 +175,6 @@ func (s *server) GetFriends(ctx context.Context, req *im.UserRequest) (*im.Frien
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Println("对空结果也进行缓存")
-			s.redis.Set(ctx, cacheKey, []byte{}, 10*time.Minute)
 			return &im.Friends{}, nil // 返回空列表而不是错误
 		}
 		return nil, err
