@@ -42,6 +42,7 @@ echo -e "${YELLOW}检查依赖工具...${NC}"
 check_tool protoc
 check_tool protoc-gen-go "google.golang.org/protobuf/cmd/protoc-gen-go"
 check_tool protoc-gen-go-grpc "google.golang.org/grpc/cmd/protoc-gen-go-grpc"
+check_tool swag "github.com/swaggo/swag/cmd/swag"  # 新增Swagger工具检查
 
 # 生成gRPC代码
 echo -e "${YELLOW}正在生成gRPC代码...${NC}"
@@ -67,7 +68,7 @@ for proto_file in *.proto; do
 done
 popd >/dev/null || exit
 
-# 新增：生成Swagger文档
+# 生成Swagger文档
 echo -e "${YELLOW}生成Swagger文档...${NC}"
 pushd "$MAIN_DIR" >/dev/null || exit
 swag init -g main.go --output "$MAIN_DIR/docs"
@@ -104,12 +105,16 @@ else
     echo -e "${YELLOW}请确保 $ENV_FILE 文件存在并包含必要的配置${NC}"
 fi
 
-# 构建可执行文件
+# 构建可执行文件 - 使用静态链接
 echo -e "${YELLOW}构建可执行文件...${NC}"
 BUILD_TARGETS=(
     "$DBPROXY_DIR/dbproxy.go"
     "$MAIN_DIR/main.go"
 )
+
+# 静态编译选项 - 简化格式
+STATIC_BUILD_FLAGS="-a -ldflags '-extldflags=-static -w -s'"
+CGO_ENABLED=0  # 禁用CGO以确保纯静态编译
 
 for target in "${BUILD_TARGETS[@]}"; do
     echo -e "${YELLOW}检查文件: $target${NC}"
@@ -118,17 +123,27 @@ for target in "${BUILD_TARGETS[@]}"; do
         output_name=$(basename "$target" .go)
         echo -e "${GREEN}构建 $target -> $BUILD_DIR/$output_name${NC}"
         
-        # 构建时传递环境变量
-        (cd "$DBPROXY_DIR" && go build -o "$BUILD_DIR/$output_name" "$target")
+        # 使用简化的静态编译选项
+        (cd "$(dirname "$target")" && CGO_ENABLED=0 go build -a -ldflags '-extldflags=-static -w -s' -o "$BUILD_DIR/$output_name" "$(basename "$target")")
         
         if [ $? -ne 0 ]; then
             echo -e "${RED}构建 $target 失败${NC}"
             exit 1
+        else
+            # 验证是否为静态链接
+            if command -v file >/dev/null 2>&1; then
+                file "$BUILD_DIR/$output_name" | grep -q "statically linked"
+                if [ $? -eq 0 ]; then
+                    echo -e "${GREEN}验证通过：$output_name 是静态链接的${NC}"
+                else
+                    echo -e "${YELLOW}警告：$output_name 可能不是完全静态链接的${NC}"
+                fi
+            fi
         fi
     else
         echo -e "${RED}错误：文件 $target 不存在！${NC}"
         echo -e "${YELLOW}目录内容:${NC}"
-        ls -la "$DBPROXY_DIR"
+        ls -la "$(dirname "$target")"
         exit 1
     fi
 done
@@ -140,5 +155,9 @@ echo -e "${YELLOW}生成的代码位于: $OUTPUT_DIR${NC}"
 echo -e "${YELLOW}可执行文件位于: $BUILD_DIR${NC}"
 echo -e "${YELLOW}=========================${NC}"
 
-(cd "$DBPROXY_DIR" && "$BUILD_DIR/main" & "$BUILD_DIR/dbproxy")
+echo -e "${GREEN}是否需要运行应用程序? (y/n)${NC}"
+read -r run_option
 
+if [ "$run_option" = "y" ] || [ "$run_option" = "Y" ]; then
+    (cd "$BUILD_DIR" && ./main & ./dbproxy)
+fi
