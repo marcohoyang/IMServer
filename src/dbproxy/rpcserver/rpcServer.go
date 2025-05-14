@@ -58,7 +58,7 @@ func (s *server) CreateUser(ctx context.Context, user *im.IMUser) (*im.IMUser, e
 	if err != nil {
 		log.Printf("序列化新创建用户失败: %v", err)
 	} else {
-		cacheKey := utils.UserCacheKey(uint64(dbUser.ID))
+		cacheKey := utils.UserCacheKey(dbUser.Name)
 		s.redis.Set(ctx, cacheKey, userData, 5*time.Minute)
 	}
 
@@ -76,7 +76,7 @@ func (s *server) UpdateUser(ctx context.Context, user *im.IMUser) (*im.IMUser, e
 	}
 	log.Printf("更新用户成功, userId: %v\n", dbUser.ID)
 	// 更新成功后，更新缓存或删除缓存（取决于业务需求）
-	cacheKey := utils.UserCacheKey(uint64(dbUser.ID))
+	cacheKey := utils.UserCacheKey(dbUser.Name)
 	pbUser := conveter.ToPBIMUser(dbUser)
 	userData, err := proto.Marshal(pbUser)
 	if err != nil {
@@ -93,13 +93,8 @@ func (s *server) GetUser(ctx context.Context, req *im.UserRequest) (*im.IMUser, 
 		return nil, status.Errorf(codes.InvalidArgument, "用户名不能为空")
 	}
 
-	// 检查请求参数
-	if req.Name == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "用户名不能为空")
-	}
-
 	// 先从缓存获取用户信息
-	cacheKey := utils.UserCacheKey(req.Id)
+	cacheKey := utils.UserCacheKey(req.Name)
 	cachedUser, err := s.redis.Get(ctx, cacheKey).Result()
 
 	if err == nil {

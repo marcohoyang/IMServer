@@ -36,8 +36,8 @@ func Subscription(redis *redis.Client, ctx context.Context, channel string) (str
 }
 
 // 生成用户缓存键
-func UserCacheKey(userID uint64) string {
-	return fmt.Sprintf("user:%d", userID)
+func UserCacheKey(username string) string {
+	return fmt.Sprintf("user:%s", username)
 }
 
 // 生成好友列表缓存键
