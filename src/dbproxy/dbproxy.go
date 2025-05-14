@@ -9,26 +9,28 @@ import (
 	grpc_server "github.com/hoyang/imserver/src/dbproxy/rpcserver"
 	"github.com/hoyang/imserver/src/models"
 	"github.com/hoyang/imserver/src/utils"
-	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 func createMysqlConn(logger logger.Interface) *gorm.DB {
-	err := godotenv.Load()
-	if err != nil {
-		log.Printf("警告: 无法加载 .env 文件: %v", err)
+	viper.SetConfigName("config") // 设置配置文件名（不带扩展名）
+	viper.SetConfigType("yaml")   // 如果配置文件没有扩展名，则需要指定类型
+	viper.AddConfigPath(".")      // 添加当前目录作为搜索路径
+
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Println("Error reading config file, using defaults.", err)
 	}
 
-	// 获取环境变量（如果 .env 未加载，会尝试从系统环境变量获取）
-	dbUser := os.Getenv("MYSQL_USER")
-	dbPass := os.Getenv("MYSQL_PASSWORD")
-	dbHost := os.Getenv("MYSQL_HOST")
-	dbPort := os.Getenv("MYSQL_PORT")
-	dbName := os.Getenv("MYSQL_DATABASE")
+	port := viper.GetString("database.port")
+	host := viper.GetString("database.host")
+	user := viper.GetString("database.user")
+	pass := viper.GetString("database.password")
+	dbname := viper.GetString("database.dbname")
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		dbUser, dbPass, dbHost, dbPort, dbName)
+		user, pass, host, port, dbname)
 	sqldb, err := gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: logger})
 	if err != nil {
 		panic("failed to connect database")

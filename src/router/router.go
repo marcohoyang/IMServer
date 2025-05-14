@@ -15,7 +15,7 @@ func Router(service *service.UserService) *gin.Engine {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	r.Static("/asset", "asset/")
-	r.LoadHTMLGlob("/home/hoyang/IMServer/src/view/*")
+	r.LoadHTMLGlob("../view/*")
 
 	r.GET("/", service.GetIndex)
 	r.GET("/index", service.GetIndex)
