@@ -47,7 +47,6 @@ services:
       - SERVER_ID=1     # 标识服务器实例
       - DB_PROXY_HOST=dbproxy  # 通过服务名访问 DBProxy
       - DB_PROXY_PORT=50001
-      - REDIS_CACHE_HOST=redis-cache
       - REDIS_PUBSUB_HOST=redis-pubsub
       - REDIS_PORT=6379
     depends_on:
@@ -69,7 +68,6 @@ services:
       - SERVER_ID=2
       - DB_PROXY_HOST=dbproxy
       - DB_PROXY_PORT=50001
-      - REDIS_CACHE_HOST=redis-cache
       - REDIS_PUBSUB_HOST=redis-pubsub
       - REDIS_PORT=6379
     depends_on:
@@ -91,6 +89,8 @@ services:
       - app_network     # 连接应用层网络（访问 MySQL）
     environment:
       - MYSQL_HOST=mysql  # 通过服务名访问 MySQL
+      - REDIS_CACHE_HOST=redis-cache
+      - REDIS_PORT=6379
     depends_on:
       - mysql
     restart: always
