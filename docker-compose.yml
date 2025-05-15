@@ -36,7 +36,9 @@ services:
   # 2. IM 服务器（2 个实例）
   # ----------------------
   im-server-1:
-    build: .  # 替换为 IM 服务器 Dockerfile 路径
+    build:  # 替换为 IM 服务器 Dockerfile 路径
+      context: .              # 上下文为项目根目录
+      dockerfile: Dockerfile.im
     container_name: im-server-1
     networks:
       - app_network     # 连接应用层网络（访问 DBProxy/Redis/MySQL）
@@ -56,7 +58,9 @@ services:
     restart: always
 
   im-server-2:
-    build: .
+    build:  # 替换为 IM 服务器 Dockerfile 路径
+      context: .              # 上下文为项目根目录
+      dockerfile: Dockerfile.im
     container_name: im-server-2
     networks:
       - app_network
@@ -79,7 +83,9 @@ services:
   # 3. DBProxy 服务
   # ----------------------
   dbproxy:
-    build: ./src/dbproxy    # DBProxy 的 Dockerfile
+    build:    # DBProxy 的 Dockerfile
+      context: .              # 上下文为项目根目录
+      dockerfile: Dockerfile.dbproxy
     container_name: dbproxy
     networks:
       - app_network     # 连接应用层网络（访问 MySQL）
