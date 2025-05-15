@@ -25,7 +25,10 @@ func createMysqlConn(logger logger.Interface) *gorm.DB {
 	}
 
 	port := viper.GetString("database.port")
-	host := viper.GetString("database.host")
+	host := os.Getenv("MYSQL_HOST")
+	if host == "" {
+		host = viper.GetString("database.host") // 默认值，仅用于本地测试
+	}
 	user := viper.GetString("database.user")
 	pass := viper.GetString("database.password")
 	dbname := viper.GetString("database.dbname")
@@ -47,7 +50,15 @@ func main() {
 			LogLevel:      logger.Info,
 			Colorful:      true,
 		})
-	redis := utils.CreateRedisConn("localhost:6379")
+	redisHost := os.Getenv("REDIS_CACHE_HOST")
+	redisPort := os.Getenv("REDIS_PORT")
+	if redisHost == "" {
+		redisHost = "localhost" // 默认值，仅用于本地测试
+	}
+	if redisPort == "" {
+		redisPort = "6379"
+	}
+	redis := utils.CreateRedisConn(fmt.Sprintf("%s:%s", redisHost, redisPort))
 	db := createMysqlConn(newLogger)
 
 	log.Println("Mysql 连接成功:")

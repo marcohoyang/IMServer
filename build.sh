@@ -89,32 +89,12 @@ go fmt ./... >/dev/null
 echo -e "${YELLOW}检查依赖...${NC}"
 go mod tidy
 
-# 加载环境变量
-if [ -f "$ENV_FILE" ]; then
-    echo -e "${GREEN}加载环境变量: $ENV_FILE${NC}"
-    
-    # 使用dotenv库加载环境变量（如果已安装）
-    if command -v dotenv >/dev/null 2>&1; then
-        dotenv -f "$ENV_FILE" exec true
-    else
-        # 手动加载环境变量
-        export $(grep -v '^#' "$ENV_FILE" | xargs)
-    fi
-else
-    echo -e "${YELLOW}警告：环境文件 $ENV_FILE 不存在！${NC}"
-    echo -e "${YELLOW}请确保 $ENV_FILE 文件存在并包含必要的配置${NC}"
-fi
-
-# 构建可执行文件 - 使用静态链接
+# 构建可执行文件
 echo -e "${YELLOW}构建可执行文件...${NC}"
 BUILD_TARGETS=(
     "$DBPROXY_DIR/dbproxy.go"
     "$MAIN_DIR/main.go"
 )
-
-# 静态编译选项 - 简化格式
-STATIC_BUILD_FLAGS="-a -ldflags '-extldflags=-static -w -s'"
-CGO_ENABLED=0  # 禁用CGO以确保纯静态编译
 
 for target in "${BUILD_TARGETS[@]}"; do
     echo -e "${YELLOW}检查文件: $target${NC}"
@@ -123,22 +103,11 @@ for target in "${BUILD_TARGETS[@]}"; do
         output_name=$(basename "$target" .go)
         echo -e "${GREEN}构建 $target -> $BUILD_DIR/$output_name${NC}"
         
-        # 使用简化的静态编译选项
-        (cd "$(dirname "$target")" && CGO_ENABLED=0 go build -a -ldflags '-extldflags=-static -w -s' -o "$BUILD_DIR/$output_name" "$(basename "$target")")
+        (cd "$(dirname "$target")" && go build  -o "$BUILD_DIR/$output_name" "$(basename "$target")")
         
         if [ $? -ne 0 ]; then
             echo -e "${RED}构建 $target 失败${NC}"
             exit 1
-        else
-            # 验证是否为静态链接
-            if command -v file >/dev/null 2>&1; then
-                file "$BUILD_DIR/$output_name" | grep -q "statically linked"
-                if [ $? -eq 0 ]; then
-                    echo -e "${GREEN}验证通过：$output_name 是静态链接的${NC}"
-                else
-                    echo -e "${YELLOW}警告：$output_name 可能不是完全静态链接的${NC}"
-                fi
-            fi
         fi
     else
         echo -e "${RED}错误：文件 $target 不存在！${NC}"
@@ -159,5 +128,27 @@ echo -e "${GREEN}是否需要运行应用程序? (y/n)${NC}"
 read -r run_option
 
 if [ "$run_option" = "y" ] || [ "$run_option" = "Y" ]; then
-    (cd "$BUILD_DIR" && ./main & ./dbproxy)
+    if [ ! -f "$BUILD_DIR/main" ]; then
+        echo -e "${RED}找不到 main 可执行文件${NC}"
+        exit 1
+    fi
+
+    if [ ! -f "$BUILD_DIR/dbproxy" ]; then
+        echo -e "${RED}找不到 dbproxy 可执行文件${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}正在启动服务...${NC}"
+
+    # 使用绝对路径启动
+    "$BUILD_DIR/main" &
+    MAIN_PID=$!
+
+    "$BUILD_DIR/dbproxy" &
+    DBPROXY_PID=$!
+
+    echo "服务已启动。PID: main=$MAIN_PID, dbproxy=$DBPROXY_PID"
+
+    # 等待子进程结束（可选）
+    wait
 fi

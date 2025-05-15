@@ -5,21 +5,19 @@ FROM ubuntu:22.04
 WORKDIR /app
 
 # 将可执行文件复制到容器中
-COPY build/main /app/msg-server
+COPY ../../build/dbproxy /app/dbproxy
 
 # 如果有配置文件，也一并复制
-COPY config.yaml /app/config.yaml
 
-#将静态文件复制到容器中
-COPY /view  /view
+COPY ../../config.yaml /app/config.yaml
 
 # 暴露应用程序所需的端口（如果有的话）
-EXPOSE 8080
+EXPOSE 50001
 
-RUN chmod +x /app/msg-server
+RUN chmod +x /app/dbproxy
 
 # 设置环境变量（如果有需要的话）
 ENV APP_ENV=production
 
 # 定义启动命令
-CMD ["./msg-server"]
+CMD ["./dbproxy"]

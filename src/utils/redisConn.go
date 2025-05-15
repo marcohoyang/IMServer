@@ -4,11 +4,22 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/redis/go-redis/v9"
 )
 
 func CreateRedisConn(addr string) *redis.Client {
+
+	// 从环境变量获取 Redis 配置, docker使用
+	redisHost := os.Getenv("REDIS_CACHE_HOST")
+	redisPort := os.Getenv("REDIS_PORT")
+	if redisHost == "" {
+		redisHost = "localhost" // 默认值，仅用于本地测试
+	}
+	if redisPort == "" {
+		redisPort = "6379"
+	}
 	// 创建 Redis 客户端
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     addr, // Redis 地址

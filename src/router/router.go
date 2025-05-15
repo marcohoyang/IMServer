@@ -1,6 +1,9 @@
 package router
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/gin-gonic/gin"
 	docs "github.com/hoyang/imserver/src/docs"
 	"github.com/hoyang/imserver/src/service"
@@ -15,7 +18,13 @@ func Router(service *service.UserService) *gin.Engine {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	r.Static("/asset", "asset/")
-	r.LoadHTMLGlob("../view/*")
+	// 获取可执行文件所在目录
+	exe, _ := os.Executable()
+	dir := filepath.Dir(exe)
+
+	// 构建模板路径（比如 ../view）
+	templatePath := filepath.Join(dir, "..", "view", "*")
+	r.LoadHTMLGlob(templatePath)
 
 	r.GET("/", service.GetIndex)
 	r.GET("/index", service.GetIndex)

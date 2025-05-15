@@ -1,0 +1,135 @@
+version: '3.8'
+
+# 自定义网络（隔离服务间通信）
+networks:
+  app_network:          # 应用层网络（IM/DBProxy/Redis/MySQL）
+  proxy_network:        # Nginx 代理网络（仅 Nginx 与应用通信）
+
+# 数据卷（持久化存储）
+volumes:
+  mysql_data:           # MySQL 数据卷
+  redis_cache_data:     # Redis Cache 数据卷
+  redis_pubsub_data:    # Redis Pub/Sub 数据卷
+
+# 服务定义
+services:
+
+  # ----------------------
+  # 1. Nginx 代理服务
+  # ----------------------
+  nginx-proxy:
+    image: nginx:latest
+    container_name: nginx-proxy
+    networks:
+      - proxy_network    # 仅用于与应用服务通信
+    ports:
+      - "80:80"         # 暴露 HTTP 端口到宿主机
+      - "443:443"       # 可选 HTTPS 端口
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro  # 挂载代理配置
+    depends_on:
+      - im-server-1
+      - im-server-2
+    restart: always
+
+  # ----------------------
+  # 2. IM 服务器（2 个实例）
+  # ----------------------
+  im-server-1:
+    build: .  # 替换为 IM 服务器 Dockerfile 路径
+    container_name: im-server-1
+    networks:
+      - app_network     # 连接应用层网络（访问 DBProxy/Redis/MySQL）
+      - proxy_network   # 连接代理网络（被 Nginx 访问）
+    environment:
+      - SERVER_ID=1     # 标识服务器实例
+      - DB_PROXY_HOST=dbproxy  # 通过服务名访问 DBProxy
+      - DB_PROXY_PORT=50001
+      - REDIS_CACHE_HOST=redis-cache
+      - REDIS_PUBSUB_HOST=redis-pubsub
+      - REDIS_PORT=6379
+    depends_on:
+      - dbproxy
+      - redis-cache
+      - redis-pubsub
+      - mysql
+    restart: always
+
+  im-server-2:
+    build: .
+    container_name: im-server-2
+    networks:
+      - app_network
+      - proxy_network
+    environment:
+      - SERVER_ID=2
+      - DB_PROXY_HOST=dbproxy
+      - DB_PROXY_PORT=50001
+      - REDIS_CACHE_HOST=redis-cache
+      - REDIS_PUBSUB_HOST=redis-pubsub
+      - REDIS_PORT=6379
+    depends_on:
+      - dbproxy
+      - redis-cache
+      - redis-pubsub
+      - mysql
+    restart: always
+
+  # ----------------------
+  # 3. DBProxy 服务
+  # ----------------------
+  dbproxy:
+    build: ./src/dbproxy    # DBProxy 的 Dockerfile
+    container_name: dbproxy
+    networks:
+      - app_network     # 连接应用层网络（访问 MySQL）
+    environment:
+      - MYSQL_HOST=mysql  # 通过服务名访问 MySQL
+    depends_on:
+      - mysql
+    restart: always
+
+  # ----------------------
+  # 4. Redis 服务（缓存+消息）
+  # ----------------------
+  redis-cache:
+    image: redis:7-alpine
+    container_name: redis-cache
+    networks:
+      - app_network
+    #command: redis-server --appendonly yes  # 启用持久化
+    volumes:
+      - redis_cache_data:/data
+    restart: always
+
+  redis-pubsub:
+    image: redis:7-alpine
+    container_name: redis-pubsub
+    networks:
+      - app_network
+    #command: redis-server --appendonly yes
+    volumes:
+      - redis_pubsub_data:/data
+    restart: always
+
+  # ----------------------
+  # 5. MySQL 服务
+  # ----------------------
+  mysql:
+    image: mysql:8.0.32
+    container_name: mysql
+    networks:
+      - app_network
+    environment:
+      - MYSQL_ROOT_PASSWORD=i*8BFK_5  # 强密码
+    volumes:
+      - mysql_data:/var/lib/mysql   # 数据持久化
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # 初始化脚本
+    ports:
+      - "3306:3306"                # 可选：暴露端口到宿主机（生产环境建议关闭）
+    restart: always
+    healthcheck:                  # 健康检查（等待数据库就绪）
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
