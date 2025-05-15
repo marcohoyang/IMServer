@@ -132,7 +132,7 @@ services:
       - mysql_data:/var/lib/mysql   # 数据持久化
       - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # 初始化脚本
     ports:
-      - "3306:3306"                # 可选：暴露端口到宿主机（生产环境建议关闭）
+      - "3307:3306"                # 可选：暴露端口到宿主机（生产环境建议关闭）
     restart: always
     healthcheck:                  # 健康检查（等待数据库就绪）
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
