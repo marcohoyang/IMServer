@@ -18,7 +18,7 @@ services:
   # 1. Nginx 代理服务
   # ----------------------
   nginx-proxy:
-    image: nginx:latest
+    image: registry.openanolis.cn/openanolis/nginx:1.14.1-8.6
     container_name: nginx-proxy
     networks:
       - proxy_network    # 仅用于与应用服务通信
@@ -99,7 +99,7 @@ services:
   # 4. Redis 服务（缓存+消息）
   # ----------------------
   redis-cache:
-    image: redis:7-alpine
+    image: registry.openanolis.cn/openanolis/redis:5.0.3-8.6
     container_name: redis-cache
     networks:
       - app_network
@@ -109,7 +109,7 @@ services:
     restart: always
 
   redis-pubsub:
-    image: redis:7-alpine
+    image: registry.openanolis.cn/openanolis/redis:5.0.3-8.6
     container_name: redis-pubsub
     networks:
       - app_network
@@ -122,7 +122,7 @@ services:
   # 5. MySQL 服务
   # ----------------------
   mysql:
-    image: mysql:8.0.32
+    image: registry.openanolis.cn/openanolis/mysql:8.0.30-8.6
     container_name: mysql
     networks:
       - app_network
