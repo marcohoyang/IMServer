@@ -8,7 +8,7 @@ WORKDIR /app
 COPY build/dbproxy /app/dbproxy
 
 # 如果有配置文件，也一并复制
-COPY .config.yaml /app/config.yaml
+COPY config.yaml /app/config.yaml
 
 # 暴露应用程序所需的端口（如果有的话）
 EXPOSE 50001
