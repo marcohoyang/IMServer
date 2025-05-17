@@ -1,5 +1,5 @@
 # 使用官方的最小化运行时作为基础镜像
-FROM ubuntu:22.04
+FROM ac2-registry.cn-hangzhou.cr.aliyuncs.com/ac2/base:ubuntu22.04
 
 # 创建应用的工作目录
 WORKDIR /app

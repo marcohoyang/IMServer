@@ -21,6 +21,9 @@ type IMUser struct {
 	Device        string     `json:"device,omitempty" gorm:"type:varchar(100)"`
 	IsLogout      bool       `json:"is_logout" gorm:"default:false"`
 	Salt          string
+
+	//好友关系 - 引用多对多
+	Contacts []*Contact `gorm:"many2many:user_friends;joinForeignKey:firend_id;joinReferences:user_id"`
 }
 
 func (table *IMUser) TableName() string {

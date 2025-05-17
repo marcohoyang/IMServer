@@ -16,3 +16,13 @@ docker build -f Dockerfile.im  -t imserver.v1.0 .
 
 `查看状态`
  docker-compose ps
+
+ `重新build image`
+ sudo docker-compose build --no-cache app-name
+
+
+ `TODO`
+ 1. redis clsuter
+ 2. 通过mq 处理log
+ 3. 群聊，在线状态，离线消息处理，上线后消息拉取
+ 4. 数据库与缓存的一致性

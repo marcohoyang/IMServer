@@ -73,7 +73,7 @@ message Contact {
   google.protobuf.Timestamp updated_at = 3;
   google.protobuf.Timestamp deleted_at = 4;
 
-  uint64 OwnerId = 5;
-	uint64 TargetId = 6;
+  uint64 UserID = 5;
+	uint64 FriendID = 6;
 	string Status = 7;
 }

@@ -36,6 +36,7 @@ func createMysqlConn(logger logger.Interface) *gorm.DB {
 		user, pass, host, port, dbname)
 	sqldb, err := gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: logger})
 	if err != nil {
+		log.Println("failed to connect database", err)
 		panic("failed to connect database")
 	}
 

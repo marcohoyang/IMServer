@@ -62,7 +62,6 @@ func (s *server) CreateUser(ctx context.Context, user *im.IMUser) (*im.IMUser, e
 		s.redis.Set(ctx, cacheKey, userData, 5*time.Minute)
 	}
 
-	*user = *conveter.ToPBIMUser(dbUser)
 	return pbUser, nil
 }
 
@@ -154,22 +153,24 @@ func (s *server) GetFriends(ctx context.Context, req *im.UserRequest) (*im.Frien
 
 	var friends []models.FriendView
 	// 执行连表查询
-	err = s.db.Table("contact_table uf").
+	err = s.db.Table("user_friends uf").
 		Select(`
-            u.id,
-            u.name as username,
-            u.is_logout,
-            uf.status,
-            uf.created_at
-        `).
-		Joins("JOIN user_basic u ON uf.target_id = u.id").
-		Where("uf.owner_id  = (?)", req.Id).
+	        u.id,
+	        u.name as username,
+	        u.is_logout,
+	        uf.status,
+	        uf.created_at
+	    `).
+		Joins("JOIN user_basic u ON uf.friend_id = u.id").
+		Where("uf.user_id  = (?)", req.Id).
 		//Where("uf.status = ?", "accepted"). // 只返回已接受的好友关系
 		Order("uf.created_at DESC"). // 按创建时间排序
 		Find(&friends).Error
-
+	//var user models.IMUser
+	//err = s.db.Preload("Contacts", "user_friends.status = ?", "accepted").First(&user, req.Id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			s.redis.Set(ctx, cacheKey, []byte{}, 10*time.Minute)
 			return &im.Friends{}, nil // 返回空列表而不是错误
 		}
 		return nil, err
@@ -196,7 +197,7 @@ func (s *server) AddFriend(ctx context.Context, contact *im.Contact) (*im.AddRes
 		return &resp, tx.Error
 	}
 
-	userShip1 := models.Contact{OwnerId: uint(contact.OwnerId), TargetId: uint(contact.TargetId), Status: "accepted"}
+	userShip1 := models.Contact{UserID: uint(contact.UserID), FriendID: uint(contact.FriendID), Status: "accepted"}
 	result := s.db.Create(&userShip1)
 	// 检查插入是否成功
 
@@ -206,7 +207,7 @@ func (s *server) AddFriend(ctx context.Context, contact *im.Contact) (*im.AddRes
 		return &resp, result.Error
 	}
 
-	userShip2 := models.Contact{OwnerId: uint(contact.TargetId), TargetId: uint(contact.OwnerId), Status: "accepted"}
+	userShip2 := models.Contact{UserID: uint(contact.FriendID), FriendID: uint(contact.UserID), Status: "accepted"}
 	result = s.db.Create(&userShip2)
 	// 检查插入是否成功
 
@@ -221,8 +222,8 @@ func (s *server) AddFriend(ctx context.Context, contact *im.Contact) (*im.AddRes
 	}
 
 	// 添加成功后，删除双方的好友列表缓存
-	s.redis.Del(ctx, utils.FriendsCacheKey(contact.OwnerId))
-	s.redis.Del(ctx, utils.FriendsCacheKey(contact.TargetId))
+	s.redis.Del(ctx, utils.FriendsCacheKey(contact.UserID))
+	s.redis.Del(ctx, utils.FriendsCacheKey(contact.FriendID))
 
 	return &resp, nil
 }

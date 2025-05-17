@@ -152,8 +152,8 @@ func (s *UserService) AddFriend(c *gin.Context) {
 		return
 	}
 	var userShips models.Contact
-	userShips.OwnerId = addFriendReq.UserID
-	userShips.TargetId = friend.ID
+	userShips.UserID = addFriendReq.UserID
+	userShips.FriendID = friend.ID
 	err = s.addFriend(&userShips)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -174,8 +174,8 @@ func (s *UserService) addFriend(userShips *models.Contact) error {
 	defer s.pool.Put(conn)
 	client := im.NewUserServiceClient(conn)
 	contact := im.Contact{}
-	contact.OwnerId = uint64(userShips.OwnerId)
-	contact.TargetId = uint64(userShips.TargetId)
+	contact.UserID = uint64(userShips.UserID)
+	contact.FriendID = uint64(userShips.FriendID)
 	_, err := client.AddFriend(ctx, &contact)
 	if err != nil {
 		log.Printf("addFriend failed %v\n", err)

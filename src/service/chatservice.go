@@ -49,15 +49,18 @@ func (s *ChatService) Subscription() {
 				log.Printf("recive msg err %v", err)
 				continue
 			}
-			log.Println("Subscription revice:", msg)
-			message, _ := models.MessageFromString(msg)
-			log.Println("targetId,", message.TargetId)
-			s.rwLocker.RLock()
-			node := s.clientMap[message.TargetId]
-			s.rwLocker.RUnlock()
-			if node != nil {
-				node.DataQueue <- message
-			}
+			// 根据targetId转发消息到对应的user node，可能会导致消息顺序错误
+			go func() {
+				log.Println("Subscription revice:", msg)
+				message, _ := models.MessageFromString(msg)
+				log.Println("targetId,", message.TargetId)
+				s.rwLocker.RLock()
+				node := s.clientMap[message.TargetId]
+				s.rwLocker.RUnlock()
+				if node != nil {
+					node.DataQueue <- message
+				}
+			}()
 		}
 	}()
 }
@@ -111,6 +114,7 @@ func (s *ChatService) Chat(c *gin.Context) {
 	node.wg.Wait()
 	log.Println("handlerWebsocket msg eixt")
 	node.Conn.Close()
+	delete(s.clientMap, userId.(uint))
 }
 
 // 设置心跳参数

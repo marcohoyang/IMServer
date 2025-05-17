@@ -38,7 +38,7 @@ services:
   im-server-1:
     build:  # 替换为 IM 服务器 Dockerfile 路径
       context: .              # 上下文为项目根目录
-      dockerfile: Dockerfile.im
+      dockerfile: Dockerfile.imserver
     container_name: im-server-1
     networks:
       - app_network     # 连接应用层网络（访问 DBProxy/Redis/MySQL）
@@ -59,7 +59,7 @@ services:
   im-server-2:
     build:  # 替换为 IM 服务器 Dockerfile 路径
       context: .              # 上下文为项目根目录
-      dockerfile: Dockerfile.im
+      dockerfile: Dockerfile.imserver
     container_name: im-server-2
     networks:
       - app_network
@@ -93,6 +93,7 @@ services:
       - REDIS_PORT=6379
     depends_on:
       - mysql
+      - redis-cache
     restart: always
 
   # ----------------------
