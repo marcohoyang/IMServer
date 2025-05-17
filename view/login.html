@@ -234,24 +234,6 @@
                             <!-- 好友列表将通过JS动态填充 -->
                         </div>
                     </div>
-                    
-                    <div class="p-3 border-t border-gray-200">
-                        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">最近聊天</h2>
-                        <div class="mt-2 space-y-1">
-                            <!-- 最近聊天记录 -->
-                            <a href="#" class="flex items-center p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                                <img src="https://picsum.photos/200/201" alt="好友头像" class="w-8 h-8 rounded-full object-cover">
-                                <div class="ml-3 flex-1 min-w-0">
-                                    <p class="text-sm font-medium text-gray-900 truncate">张三</p>
-                                    <p class="text-xs text-gray-500 truncate">最近消息内容...</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-xs text-gray-500">12:34</p>
-                                    <span class="mt-1 inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-white bg-primary rounded-full">2</span>
-                                </div>
-                            </a>
-                        </div>
-                    </div>
                 </div>
                 
                 <div class="p-4 border-t border-gray-200">
@@ -549,7 +531,7 @@
         logoutButton.addEventListener('click', async () => {
             try {
                 // 发送登出请求，确保携带Cookie
-                const response = await fetch(`${API_BASE_URL}/api/logout`, {
+                const response = await fetch(`${API_BASE_URL}/api/user/logout`, {
                     method: 'POST',
                     credentials: 'include' // 携带Cookie
                 });
@@ -735,7 +717,7 @@
         }
 
         // 添加消息到聊天窗口
-        function appendMessage(message, type) {
+        function appendMessage(message, type, senderId) {
             const messagesContainer = document.getElementById('messages-container');
             if (!messagesContainer) return;
             
@@ -768,6 +750,12 @@
                     </div>
                 `;
             }
+
+            // 将消息添加到对应聊天对象的聊天记录中
+            if (!chatRecords[senderId]) {
+                chatRecords[senderId] = [];
+            }
+            chatRecords[senderId].push(messageElement);
             
             // 移除"正在输入"提示
             const typingIndicator = messagesContainer.querySelector('.flex.items-center.justify-center');
@@ -780,9 +768,43 @@
             
             // 滚动到底部
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // 如果当前聊天对象不是消息发送者，增加未读消息数量
+            if (senderId && senderId !== currentChatFriendId) {
+                if (!unreadMessages[senderId]) {
+                    unreadMessages[senderId] = 0;
+                }
+                unreadMessages[senderId]++;
+                updateUnreadCount(senderId);
+            }
+        }
+
+        // 更新好友列表中某个好友的未读消息数量显示
+        function updateUnreadCount(friendId) {
+            const friendElement = document.querySelector(`#friends-list a[data-id="${friendId}"]`);
+            if (friendElement) {
+                let countElement = friendElement.querySelector('.inline-flex');
+                if (!countElement) {
+                    countElement = document.createElement('span');
+                    countElement.className = 'mt-1 inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-white bg-primary rounded-full';
+                    const rightDiv = document.createElement('div');
+                    rightDiv.className = 'text-right';
+                    rightDiv.appendChild(countElement);
+                    friendElement.appendChild(rightDiv);
+                }
+                countElement.textContent = unreadMessages[friendId];
+                if (unreadMessages[friendId] === 0) {
+                    countElement.style.display = 'none';
+                } else {
+                    countElement.style.display = 'inline-flex';
+                }
+            }
         }
 
         let currentChatFriendId = null; 
+        const chatRecords = {};
+        // 存储每个好友的未读消息数量
+        const unreadMessages = {};
 
         // 加载好友列表
         async function loadFriendsList() {
@@ -816,8 +838,8 @@
                                 ${friend.online ? '<span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>' : ''}
                             </div>
                             <div class="ml-3 flex-1 min-w-0">
-                                <p class="text-sm font-medium text-gray-900 truncate">${friend.username}</p>
-                                <p class="text-xs text-gray-500 truncate">${friend.online ? '在线' : '在线'}</p>
+                                <h1 class="text-sm font-medium text-gray-900 truncate">${friend.username}</h1>
+                                <p1 class="text-xs text-gray-500 truncate">${friend.online ? '在线' : '在线'}</p1>
                             </div>
                         `;
                         // 添加点击事件
@@ -840,7 +862,21 @@
                             document.querySelector('#chat-container h3').textContent = friend.username;
                             document.querySelector('#chat-container p').textContent = friend.online ? '在线' : '离线';
                             document.querySelector('#chat-container img').src = "https://picsum.photos/200/201";
-                            
+
+                            // 显示该聊天对象的聊天记录
+                            if (chatRecords[currentChatFriendId]) {
+                                const messagesContainer = document.getElementById('messages-container');
+                                chatRecords[currentChatFriendId].forEach(messageElement => {
+                                    messagesContainer.appendChild(messageElement);
+                                });
+                                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                            }
+
+                             // 清空该好友的未读消息数量
+                            if (unreadMessages[currentChatFriendId]) {
+                                unreadMessages[currentChatFriendId] = 0;
+                                updateUnreadCount(currentChatFriendId);
+                            }
                             
                             // 在移动端上关闭侧边栏
                             if (window.innerWidth < 1024) {
@@ -854,6 +890,11 @@
                         });
                         
                         friendsList.appendChild(friendElement);
+
+                         // 初始化未读消息数量显示
+                        if (unreadMessages[friend.id]) {
+                            updateUnreadCount(friend.id);
+                        }
                     });
                 }
             } catch (error) {
@@ -875,17 +916,19 @@
                 socket.onopen = () => {
                     console.log('WebSocket连接已建立');
                     showNotification('连接成功', '已成功连接到聊天服务器');
+                    reconnectCount = 0;
                 };
                 
                 // 接收到消息
                 socket.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
+                        const senderId = data.FormId; // 假设消息对象中有 FormId 表示发送者 ID
                         console.log('收到消息', event);
                         // 处理不同类型的消息
                         if (data.Type === 1) {
                             const content = decodeURIComponent(escape(atob(data.Content)));
-                            appendMessage(content, 'other');
+                            appendMessage(content, 'other', senderId);
                         } else if (data.Type === 2) {
                             showNotification('通知', data.content);
                         } else if (data.Type === 3) {
@@ -902,10 +945,14 @@
                     console.log('WebSocket连接已关闭', event);
                     showNotification('连接断开', '与聊天服务器的连接已断开，正在尝试重连...', 'error');
                     
-                    // 尝试重连
-                    setTimeout(() => {
-                        establishWebSocket();
-                    }, 5000);
+                    if (reconnectCount < MAX_RECONNECT_COUNT) {
+                        reconnectCount++;
+                        setTimeout(() => {
+                            establishWebSocket();
+                        }, 5000);
+                    } else {
+                        showNotification('重连失败', '达到最大重连次数，请检查网络连接', 'error');
+                    }
                 };
                 
                 // 连接错误
@@ -918,9 +965,14 @@
                 showNotification('连接失败', '无法连接到聊天服务器', 'error');
                 
                 // 尝试重连
-                setTimeout(() => {
-                    establishWebSocket();
-                }, 5000);
+                if (reconnectCount < MAX_RECONNECT_COUNT) {
+                    reconnectCount++;
+                    setTimeout(() => {
+                        establishWebSocket();
+                            }, 5000);
+                } else {
+                    showNotification('重连失败', '达到最大重连次数，请检查网络连接', 'error');
+                }
             }
         }
 

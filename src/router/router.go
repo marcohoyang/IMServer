@@ -33,13 +33,19 @@ func Router(service *service.UserService) *gin.Engine {
 	r.POST("/api/login", service.Login)
 
 	user := r.Group("/api/user")
-	user.GET("/ws", utils.JWTAuthMiddlewareForWS(), service.UpgradeWebSocket)
-	user.GET("/friends", utils.JWTAuthMiddlewareForWS(), service.GetFriends)
-	user.POST("addfriend", utils.JWTAuthMiddlewareForWS(), service.AddFriend)
+	user.Use(utils.JWTAuthMiddlewareForWS())
+	{
+		user.GET("/ws", service.UpgradeWebSocket)
+		user.GET("/friends", service.GetFriends)
+		user.POST("/addfriend", service.AddFriend)
+		user.POST("/logout", service.Logout)
+	}
+
+	// 要对api进行升级，后续使用JWTAuthMiddlewareForWS
 	user.Use(utils.JWTAuthMiddleware())
 	{
 		user.POST("/updateUser", service.UpdateUser)
-		user.GET("/getUser", service.GetUser)
+		user.GET("/getUser", service.GetUserByName)
 	}
 
 	return r

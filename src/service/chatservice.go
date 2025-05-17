@@ -23,7 +23,8 @@ type Node struct {
 
 func CreateNode(c *websocket.Conn) *Node {
 	var node Node
-	node.DataQueue = make(chan models.Message)
+	queueSize := 10
+	node.DataQueue = make(chan models.Message, queueSize)
 	node.Conn = c
 	return &node
 }
@@ -74,7 +75,6 @@ var upgrader = websocket.Upgrader{
 }
 
 func (s *ChatService) Chat(c *gin.Context) {
-
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("升级websocket失败")
@@ -83,6 +83,7 @@ func (s *ChatService) Chat(c *gin.Context) {
 		})
 		return
 	}
+	defer conn.Close()
 	node := CreateNode(conn)
 	node.Conn = conn
 	userId, exist := c.Get("user_id")
@@ -96,11 +97,12 @@ func (s *ChatService) Chat(c *gin.Context) {
 	s.rwLocker.Lock()
 	s.clientMap[userId.(uint)] = node
 	s.rwLocker.Unlock()
+	defer delete(s.clientMap, userId.(uint))
 
 	log.Println("升级websocke成功")
 	response := map[string]interface{}{
 		"action":  "switchToChat",
-		"message": "WebSocket 连接成功，即将切换到聊天界面",
+		"message": "WebSocket 连接成功",
 	}
 
 	// 发送消息给客户端
@@ -112,9 +114,8 @@ func (s *ChatService) Chat(c *gin.Context) {
 	s.handlerWebsocket(node, c)
 
 	node.wg.Wait()
-	log.Println("handlerWebsocket msg eixt")
-	node.Conn.Close()
-	delete(s.clientMap, userId.(uint))
+	log.Println("handlerWebsocket msg eixt, userID:", userId)
+	// TODO: 更新user status to offline
 }
 
 // 设置心跳参数
@@ -124,7 +125,7 @@ const (
 )
 
 func (s *ChatService) handlerWebsocket(node *Node, c *gin.Context) {
-	closeNotify := make(chan struct{})
+	closeNotify := make(chan any)
 	var closeOnce sync.Once
 	closeFunc := func() {
 		closeOnce.Do(func() {

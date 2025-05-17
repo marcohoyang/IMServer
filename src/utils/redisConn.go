@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 
@@ -44,14 +43,4 @@ func Subscription(redis *redis.Client, ctx context.Context, channel string) (str
 	msg, err := pubsub.ReceiveMessage(ctx)
 	log.Println(msg.String())
 	return msg.Payload, err
-}
-
-// 生成用户缓存键
-func UserCacheKey(username string) string {
-	return fmt.Sprintf("user:%s", username)
-}
-
-// 生成好友列表缓存键
-func FriendsCacheKey(userID uint64) string {
-	return fmt.Sprintf("friends:%d", userID)
 }

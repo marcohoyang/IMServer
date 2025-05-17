@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -15,6 +16,7 @@ import (
 	"github.com/hoyang/imserver/src/models"
 	im "github.com/hoyang/imserver/src/proto"
 	rpcClient "github.com/hoyang/imserver/src/rpc"
+	"gorm.io/gorm"
 
 	"github.com/hoyang/imserver/src/utils"
 	"github.com/redis/go-redis/v9"
@@ -75,7 +77,7 @@ func (s *UserService) Login(c *gin.Context) {
 	user := models.IMUser{}
 	user.Name = loginRequest.Username
 	password := loginRequest.Password
-	dbUser, err := s.getUser(&user)
+	dbUser, err := s.getUserByName(&user)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"message": "登录失败",
@@ -86,6 +88,14 @@ func (s *UserService) Login(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"message": "登录失败",
 		})
+		return
+	}
+	dbUser.IsLogout = false
+	now := time.Now()
+	dbUser.LoginTime = &now
+	_, err = s.updateUser(dbUser)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "更新用户登录状态失败"})
 		return
 	}
 	token, err := utils.GenerateToken(dbUser.ID)
@@ -105,6 +115,51 @@ func (s *UserService) Login(c *gin.Context) {
 		"message": "ok",
 		"userID":  dbUser.ID,
 	})
+}
+
+// @Router /logout [post]
+func (s *UserService) Logout(c *gin.Context) {
+	// 获取用户 ID
+	userID, exist := c.Get("user_id")
+	if !exist {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的 Token"})
+		return
+	}
+
+	// 根据用户 ID 查询用户信息
+	dbUser, err := s.getUserByID(userID.(uint))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "查询用户信息失败"})
+		}
+		return
+	}
+
+	// 更新用户的登出状态为 true
+	dbUser.IsLogout = true
+	// 记录登出时间
+	now := time.Now()
+	dbUser.LogoutTime = &now
+
+	// 保存用户信息到数据库
+	if _, err := s.updateUser(dbUser); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新用户登出状态失败"})
+		return
+	}
+
+	// 删除 Cookie 中的 Token
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: false,
+		Secure:   false,
+		MaxAge:   -1,
+	})
+
+	c.JSON(http.StatusOK, gin.H{"message": "登出成功"})
 }
 
 func (s *UserService) GetFriends(c *gin.Context) {
@@ -144,7 +199,7 @@ func (s *UserService) AddFriend(c *gin.Context) {
 
 	user := models.IMUser{}
 	user.Name = addFriendReq.FriendUsername
-	friend, err := s.getUser(&user)
+	friend, err := s.getUserByName(&user)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "用户不存在",
@@ -231,8 +286,8 @@ func (s *UserService) Register(c *gin.Context) {
 	})
 }
 
-// GetUser
-// @Summary 查询用户
+// GetUserByName
+// @Summary 通过用户名查询用户
 // @Tags 用户模块
 // @param name query string false "用户名"
 // @param Authorization header string true "Bearer token"
@@ -240,11 +295,19 @@ func (s *UserService) Register(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Success 200 {string} ok
-// @Router /user/getUser [get]
-func (s *UserService) GetUser(c *gin.Context) {
+// @Router /user/getUserByName [get]
+func (s *UserService) GetUserByName(c *gin.Context) {
+	username := c.Query("name")
+	if username == "" {
+		c.JSON(400, gin.H{
+			"message": "用户名不能为空",
+		})
+		return
+	}
+
 	user := models.IMUser{}
-	user.Name = c.Query("name")
-	dbUser, err := s.getUser(&user)
+	user.Name = username
+	dbUser, err := s.getUserByName(&user)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"message": "查询失败",
@@ -252,7 +315,46 @@ func (s *UserService) GetUser(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{
-		"userDate": dbUser,
+		"userData": dbUser,
+	})
+}
+
+// GetUserByID
+// @Summary 通过用户ID查询用户
+// @Tags 用户模块
+// @param id query string true "用户ID"
+// @param Authorization header string true "Bearer token"
+// @Security bearerAuth
+// @Accept json
+// @Produce json
+// @Success 200 {string} ok
+// @Router /user/getUserById [get]
+func (s *UserService) GetUserByID(c *gin.Context) {
+	userID := c.Query("id")
+	if userID == "" {
+		c.JSON(400, gin.H{
+			"message": "用户ID不能为空",
+		})
+		return
+	}
+
+	id, err := strconv.ParseUint(userID, 10, 64)
+	if err != nil {
+		c.JSON(400, gin.H{
+			"message": "无效的用户ID",
+		})
+		return
+	}
+
+	dbUser, err := s.getUserByID(uint(id))
+	if err != nil {
+		c.JSON(400, gin.H{
+			"message": "查询失败",
+		})
+		return
+	}
+	c.JSON(200, gin.H{
+		"userData": dbUser,
 	})
 }
 
@@ -320,17 +422,15 @@ func (s *UserService) UpgradeWebSocket(c *gin.Context) {
 	s.chatService.Chat(c)
 }
 
-func (s *UserService) getUser(user *models.IMUser) (*models.IMUser, error) {
+func (s *UserService) updateUser(user *models.IMUser) (*models.IMUser, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-
 	conn := s.pool.Get()
 	defer s.pool.Put(conn)
 	client := im.NewUserServiceClient(conn)
-	req := im.UserRequest{Name: user.Name}
-	result, err := client.GetUser(ctx, &req)
+	result, err := client.UpdateUser(ctx, conveter.ToPBIMUser(user))
 	if err != nil {
-		log.Printf("GetUser failed %v\n", err)
+		log.Printf("UpdateUser failed %v\n", err)
 		return nil, err
 	}
 
@@ -370,4 +470,38 @@ func (s *UserService) getFriends(id uint) ([]models.FriendView, error) {
 	}
 	friendViews := conveter.ProtosToFriendViews(result)
 	return friendViews, nil
+}
+
+func (s *UserService) getUserByName(user *models.IMUser) (*models.IMUser, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	conn := s.pool.Get()
+	defer s.pool.Put(conn)
+	client := im.NewUserServiceClient(conn)
+	req := im.UserRequest{Name: user.Name}
+	result, err := client.GetUserByName(ctx, &req)
+	if err != nil {
+		log.Printf("GetUserByName failed %v\n", err)
+		return nil, err
+	}
+
+	return conveter.ToDBIMUser(result), nil
+}
+
+func (s *UserService) getUserByID(id uint) (*models.IMUser, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	conn := s.pool.Get()
+	defer s.pool.Put(conn)
+	client := im.NewUserServiceClient(conn)
+	req := im.UserRequest{Id: uint64(id)}
+	result, err := client.GetUserByID(ctx, &req)
+	if err != nil {
+		log.Printf("GetUserByID failed %v\n", err)
+		return nil, err
+	}
+
+	return conveter.ToDBIMUser(result), nil
 }

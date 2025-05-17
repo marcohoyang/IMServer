@@ -68,6 +68,11 @@ const docTemplate = `{
                 }
             }
         },
+        "/logout": {
+            "post": {
+                "responses": {}
+            }
+        },
         "/register": {
             "post": {
                 "tags": [
@@ -116,7 +121,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/getUser": {
+        "/user/getUserById": {
             "get": {
                 "security": [
                     {
@@ -132,7 +137,50 @@ const docTemplate = `{
                 "tags": [
                     "用户模块"
                 ],
-                "summary": "查询用户",
+                "summary": "通过用户ID查询用户",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/getUserByName": {
+            "get": {
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户模块"
+                ],
+                "summary": "通过用户名查询用户",
                 "parameters": [
                     {
                         "type": "string",

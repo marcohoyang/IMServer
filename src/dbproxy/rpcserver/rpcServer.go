@@ -82,11 +82,11 @@ func (s *server) CreateUser(ctx context.Context, user *im.IMUser) (*im.IMUser, e
 
 func (s *server) UpdateUser(ctx context.Context, user *im.IMUser) (*im.IMUser, error) {
 	dbUser := conveter.ToDBIMUser(user)
-	result := s.db.Model(&dbUser).Updates(models.IMUser{Name: dbUser.Name, Password: dbUser.Password, Phone: dbUser.Phone, Email: dbUser.Email, Salt: dbUser.Salt})
-	if result.Error != nil {
+	err := s.db.Save(&dbUser).Error
+	if err != nil {
 		// 处理错误
-		log.Printf("更新用户失败: %v\n", result.Error)
-		return nil, result.Error
+		log.Printf("更新用户失败: %v\n", err)
+		return nil, err
 	}
 	log.Printf("更新用户成功, userId: %v\n", dbUser.ID)
 	// 更新成功后，更新缓存或删除缓存（取决于业务需求）
@@ -101,7 +101,8 @@ func (s *server) UpdateUser(ctx context.Context, user *im.IMUser) (*im.IMUser, e
 	return pbUser, nil
 }
 
-func (s *server) GetUser(ctx context.Context, req *im.UserRequest) (*im.IMUser, error) {
+// GetUserByName 通过用户名获取用户信息
+func (s *server) GetUserByName(ctx context.Context, req *im.UserRequest) (*im.IMUser, error) {
 	// 检查请求参数
 	if req.Name == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "用户名不能为空")
@@ -118,13 +119,14 @@ func (s *server) GetUser(ctx context.Context, req *im.UserRequest) (*im.IMUser, 
 			log.Printf("反序列化用户缓存失败: %v", err)
 			// 缓存数据损坏，继续从数据库查询
 		} else {
-			log.Printf("从缓存获取用户成功, userId: %d", req.Id)
+			log.Printf("从缓存获取用户成功, username: %s", req.Name)
 			return &pbUser, nil
 		}
 	} else if err != redis.Nil {
 		log.Printf("查询 Redis 缓存失败: %v", err)
 		// 缓存查询错误，继续从数据库查询
 	}
+
 	var dbUser models.IMUser
 	result := s.db.Where("name = ?", req.Name).First(&dbUser)
 	if result.Error != nil {
@@ -136,7 +138,7 @@ func (s *server) GetUser(ctx context.Context, req *im.UserRequest) (*im.IMUser, 
 		return nil, status.Errorf(codes.Internal, "服务器内部错误")
 	}
 
-	log.Printf("查询用户成功, userId: %v\n", dbUser.ID)
+	log.Printf("查询用户成功, username: %s\n", dbUser.Name)
 	// 将查询结果存入缓存，设置合理的过期时间（如 5 分钟）
 	pbUser := conveter.ToPBIMUser(&dbUser)
 	userData, err := proto.Marshal(pbUser)
@@ -144,6 +146,58 @@ func (s *server) GetUser(ctx context.Context, req *im.UserRequest) (*im.IMUser, 
 		log.Printf("序列化用户数据失败: %v", err)
 	} else {
 		s.redis.Set(ctx, cacheKey, userData, 5*time.Minute)
+	}
+	return pbUser, nil
+}
+
+// GetUserByID 通过用户ID获取用户信息
+func (s *server) GetUserByID(ctx context.Context, req *im.UserRequest) (*im.IMUser, error) {
+	// 检查请求参数
+	if req.Id == 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "用户ID不能为空")
+	}
+
+	// 先从缓存获取用户信息
+	cacheKey := utils.UserIDCacheKey(req.Id)
+	cachedUser, err := s.redis.Get(ctx, cacheKey).Result()
+
+	if err == nil {
+		// 缓存命中，反序列化并返回
+		var pbUser im.IMUser
+		if err := proto.Unmarshal([]byte(cachedUser), &pbUser); err != nil {
+			log.Printf("反序列化用户缓存失败: %v", err)
+			// 缓存数据损坏，继续从数据库查询
+		} else {
+			log.Printf("从缓存获取用户成功, userId: %d", req.Id)
+			return &pbUser, nil
+		}
+	} else if err != redis.Nil {
+		log.Printf("查询 Redis 缓存失败: %v", err)
+		// 缓存查询错误，继续从数据库查询
+	}
+
+	var dbUser models.IMUser
+	result := s.db.First(&dbUser, req.Id)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, status.Errorf(codes.NotFound, "用户ID %d 不存在", req.Id)
+		}
+		// 其他错误
+		log.Printf("查询数据库失败: %v\n", result.Error)
+		return nil, status.Errorf(codes.Internal, "服务器内部错误")
+	}
+
+	log.Printf("查询用户成功, userId: %d\n", dbUser.ID)
+	// 将查询结果存入缓存，设置合理的过期时间（如 5 分钟）
+	pbUser := conveter.ToPBIMUser(&dbUser)
+	userData, err := proto.Marshal(pbUser)
+	if err != nil {
+		log.Printf("序列化用户数据失败: %v", err)
+	} else {
+		s.redis.Set(ctx, cacheKey, userData, 5*time.Minute)
+		// 同时更新用户名缓存
+		nameCacheKey := utils.UserCacheKey(dbUser.Name)
+		s.redis.Set(ctx, nameCacheKey, userData, 5*time.Minute)
 	}
 	return pbUser, nil
 }

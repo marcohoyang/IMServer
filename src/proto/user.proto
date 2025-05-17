@@ -8,7 +8,8 @@ option go_package = ".;im";
 
 service UserService {
   rpc CreateUser (IMUser) returns (IMUser);
-  rpc GetUser (UserRequest) returns (IMUser);
+  rpc GetUserByName (UserRequest) returns (IMUser);
+  rpc GetUserByID (UserRequest) returns (IMUser);
   rpc UpdateUser (IMUser) returns (IMUser);
   rpc DeleteUser (UserRequest) returns (DeleteResponse);
   rpc GetFriends (UserRequest) returns (Friends);

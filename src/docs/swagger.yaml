@@ -35,6 +35,9 @@ paths:
       summary: 登录
       tags:
       - 用户模块
+  /logout:
+    post:
+      responses: {}
   /register:
     post:
       parameters:
@@ -66,7 +69,34 @@ paths:
       summary: 注册用户
       tags:
       - 用户模块
-  /user/getUser:
+  /user/getUserById:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 用户ID
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - bearerAuth: []
+      summary: 通过用户ID查询用户
+      tags:
+      - 用户模块
+  /user/getUserByName:
     get:
       consumes:
       - application/json
@@ -89,7 +119,7 @@ paths:
             type: string
       security:
       - bearerAuth: []
-      summary: 查询用户
+      summary: 通过用户名查询用户
       tags:
       - 用户模块
   /user/updateUser:

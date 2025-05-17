@@ -19,7 +19,7 @@ type IMUser struct {
 	ClientPort    string     `json:"client_port,omitempty" gorm:"type:varchar(5)"` // 端口范围0-65535
 	Identity      string     `json:"identity,omitempty" gorm:"type:varchar(100)"`
 	Device        string     `json:"device,omitempty" gorm:"type:varchar(100)"`
-	IsLogout      bool       `json:"is_logout" gorm:"default:false"`
+	IsLogout      bool       `json:"is_logout" gorm:"default:true"`
 	Salt          string
 
 	//好友关系 - 引用多对多
