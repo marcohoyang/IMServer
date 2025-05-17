@@ -20,6 +20,7 @@ func InitClientPool(target string, opts ...grpc.DialOption) *ClientPool {
 				conn, err := grpc.NewClient(target, opts...)
 				if err != nil {
 					log.Printf("did not connect: %v", err)
+					panic("create grpc client failed")
 				}
 				return conn
 			},

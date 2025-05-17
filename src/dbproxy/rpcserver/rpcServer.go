@@ -5,6 +5,9 @@ import (
 	"errors"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/hoyang/imserver/src/conveter"
@@ -25,7 +28,7 @@ type server struct {
 	redis *redis.Client
 }
 
-func InitRpcServer(db *gorm.DB, redis *redis.Client) {
+func StartRpcServer(db *gorm.DB, redis *redis.Client) {
 	listen, err := net.Listen("tcp", ":50001")
 	if err != nil {
 		log.Printf("listen failed %v\n", err)
@@ -33,9 +36,21 @@ func InitRpcServer(db *gorm.DB, redis *redis.Client) {
 	rpcServer := grpc.NewServer()
 	im.RegisterUserServiceServer(rpcServer, &server{db: db, redis: redis})
 	log.Printf("server listening at %v\n", listen.Addr())
-	if err := rpcServer.Serve(listen); err != nil {
-		log.Printf("failed to serve: %v", err)
-	}
+	go func() {
+		if err := rpcServer.Serve(listen); err != nil {
+			log.Printf("failed to serve: %v", err)
+		}
+	}()
+
+	// 监听系统信号
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	// 优雅关闭服务器
+	log.Println("Shutting down grpc server gracefully...")
+	rpcServer.Stop()
+	log.Println("grpc Server shutdown complete")
 }
 
 func (s *server) PublishMsg(ctx context.Context, chanel string, msg string) {

@@ -23,20 +23,3 @@ docker build -f Dockerfile.im  -t imserver.v1.0 .
 
 `架构图`
  ![alt text](image.png)
-
-graph TD
-    subgraph Application Network
-        im-server-1 -->|访问| dbproxy
-        im-server-1 <-->|访问| redis-pubsub
-        im-server-2 -->|访问| dbproxy
-        im-server-2 <-->|访问| redis-pubsub
-        dbproxy -->|访问| mysql
-        dbproxy -->|访问| redis-cache
-    end
-
-    subgraph Proxy Network
-        nginx-proxy -->|代理请求至| im-server-1
-        nginx-proxy -->|代理请求至| im-server-2
-    end
-
-    mysql-.->|持久化存储| mysql_data

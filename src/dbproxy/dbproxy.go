@@ -15,7 +15,14 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func createMysqlConn(logger logger.Interface) *gorm.DB {
+func createMysqlConn() *gorm.DB {
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		logger.Config{
+			SlowThreshold: time.Second,
+			LogLevel:      logger.Info,
+			Colorful:      true,
+		})
 	viper.SetConfigName("config") // 设置配置文件名（不带扩展名）
 	viper.SetConfigType("yaml")   // 如果配置文件没有扩展名，则需要指定类型
 	viper.AddConfigPath(".")      // 添加当前目录作为搜索路径
@@ -34,7 +41,7 @@ func createMysqlConn(logger logger.Interface) *gorm.DB {
 	dbname := viper.GetString("database.dbname")
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		user, pass, host, port, dbname)
-	sqldb, err := gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: logger})
+	sqldb, err := gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: newLogger})
 	if err != nil {
 		log.Println("failed to connect database", err)
 		panic("failed to connect database")
@@ -44,13 +51,6 @@ func createMysqlConn(logger logger.Interface) *gorm.DB {
 }
 
 func main() {
-	newLogger := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags),
-		logger.Config{
-			SlowThreshold: time.Second,
-			LogLevel:      logger.Info,
-			Colorful:      true,
-		})
 	redisHost := os.Getenv("REDIS_CACHE_HOST")
 	redisPort := os.Getenv("REDIS_PORT")
 	if redisHost == "" {
@@ -60,11 +60,11 @@ func main() {
 		redisPort = "6379"
 	}
 	redis := utils.CreateRedisConn(fmt.Sprintf("%s:%s", redisHost, redisPort))
-	db := createMysqlConn(newLogger)
+	db := createMysqlConn()
 
-	log.Println("Mysql 连接成功:")
+	log.Println("Mysql 连接成功")
 
 	db.AutoMigrate(&models.IMUser{}, &models.Contact{})
 
-	grpc_server.InitRpcServer(db, redis)
+	grpc_server.StartRpcServer(db, redis)
 }
