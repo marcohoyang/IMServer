@@ -28,19 +28,96 @@
 - 🔄 消息持久化
 - 🚀 高并发支持
 - 🔍 消息历史记录
-- 👥 好友管理
+- 🔄 好友管理
 
 ## 🏗 系统架构
 
-![系统架构图](image.png)
+```mermaid
+flowchart TB
+    %% 定义节点样式
+    classDef client fill:#6366f1,stroke:#4f46e5,stroke-width:2px,color:white,font-weight:bold
+    classDef gateway fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:white,font-weight:bold
+    classDef service fill:#10b981,stroke:#059669,stroke-width:2px,color:white,font-weight:bold
+    classDef proxy fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:white,font-weight:bold
+    classDef cache fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:white,font-weight:bold
+    classDef database fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:white,font-weight:bold
 
-系统采用微服务架构，主要包含以下组件：
+    %% 定义节点
+    Client[客户端应用] --> |WebSocket/HTTP| Nginx[Nginx 网关]
+    
+    subgraph Gateway[接入层]
+        Nginx --> |负载均衡| IM1[IM 服务实例 1]
+        Nginx --> |负载均衡| IM2[IM 服务实例 2]
+    end
+    
+    subgraph Services[应用服务层]
+        direction TB
+        IM1 --> |gRPC| DBProxy[数据代理服务]
+        IM2 --> |gRPC| DBProxy
+        IM1 --> |消息广播| RedisPub[Redis PubSub]
+        IM2 --> |消息广播| RedisPub
+    end
+    
+    subgraph Storage[数据存储层]
+        direction TB
+        DBProxy --> |缓存| RedisCache[Redis 缓存]
+        DBProxy --> |持久化| MySQL[(MySQL 数据库)]
+    end
 
-- **IM 服务器**：处理 WebSocket 连接和消息转发
-- **DBProxy**：数据访问层，处理数据库操作
-- **Redis**：消息队列和缓存
-- **MySQL**：数据持久化存储
-- **Nginx**：负载均衡和反向代理
+    %% 应用样式
+    class Client client
+    class Nginx gateway
+    class IM1,IM2 service
+    class DBProxy proxy
+    class RedisPub,RedisCache cache
+    class MySQL database
+
+    %% 添加说明
+    linkStyle default stroke:#94a3b8,stroke-width:2px,color:#64748b
+```
+
+### 架构说明
+
+系统采用现代化的微服务架构设计，主要包含以下几个部分：
+
+#### 1. 接入层 (Gateway)
+- **Nginx 网关**：现代化的 API 网关
+  - 智能负载均衡
+  - WebSocket 长连接管理
+  - 请求限流和熔断
+  - SSL/TLS 终端
+
+#### 2. 应用服务层 (Services)
+- **IM 服务集群**：
+  - 基于 WebSocket 的实时通信
+  - 分布式会话管理
+  - 消息可靠投递
+  - 服务自动扩缩容
+
+- **数据代理服务**：
+  - 统一数据访问层
+  - 分布式事务处理
+  - 多级缓存策略
+  - 数据一致性保证
+
+#### 3. 数据存储层 (Storage)
+- **Redis 服务**：
+  - PubSub：高性能消息队列
+  - Cache：分布式缓存
+  - 支持数据持久化
+
+- **MySQL 数据库**：
+  - 分布式数据存储
+  - 主从复制
+  - 数据分片
+
+### 技术特性
+
+- 🌐 **云原生**：容器化部署，支持 K8s
+- ⚡ **高性能**：异步非阻塞，多级缓存
+- 🛡️ **安全可靠**：全链路加密，熔断降级
+- 📈 **可观测性**：分布式追踪，指标监控
+- 🔄 **弹性伸缩**：自动扩缩容，负载均衡
 
 ## 🛠 技术栈
 
