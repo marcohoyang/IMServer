@@ -13,14 +13,14 @@ import (
 
 // 自定义声明结构体，包含用户ID等信息
 type Claims struct {
-	UserID uint `json:"user_id"`
+	UserID uint64 `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
 // 密钥（生产环境应从配置文件或环境变量获取）
 var jwtKey = []byte("my-secret-key")
 
-func GenerateToken(userID uint) (string, error) {
+func GenerateToken(userID uint64) (string, error) {
 	// 设置过期时间（例如24小时）
 	expirationTime := time.Now().Add(24 * time.Hour)
 

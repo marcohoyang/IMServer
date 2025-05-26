@@ -64,7 +64,7 @@ func main() {
 
 	log.Println("Mysql 连接成功")
 
-	db.AutoMigrate(&models.IMUser{}, &models.Contact{})
+	db.AutoMigrate(&models.IMUser{}, &models.Contact{}, &models.Message{}, &models.UnreadMessage{})
 
 	grpc_server.StartRpcServer(db, redis)
 }

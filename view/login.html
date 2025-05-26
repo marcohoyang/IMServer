@@ -701,6 +701,7 @@
                     TargetId: parseInt(targetId),
                     Type: 1,         // 1表示私聊（根据业务调整）
                     Media: 1,        // 1表示文本消息（根据业务调整）
+                    ContentType: 1,
                     Content: btoa(unescape(encodeURIComponent(message))), // 文本转Base64
                     Pic: "",         // 图片URL（文本消息为空）
                     Url: "",         // 链接（文本消息为空）

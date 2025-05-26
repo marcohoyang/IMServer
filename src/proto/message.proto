@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package im;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = ".;im";
+
+// 消息服务
+service MessageService {
+  // 存储消息
+  rpc StoreMessage(StoreMessageRequest) returns (StoreMessageResponse);
+  // 获取未读消息（仅用于单聊）
+  rpc GetUnreadMessages(GetUnreadMessagesRequest) returns (GetUnreadMessagesResponse);
+  // 获取群聊消息（分页）
+  rpc GetGroupMessages(GetGroupMessagesRequest) returns (GetGroupMessagesResponse);
+}
+
+// 消息类型
+enum MessageType {
+  UNKNOWN = 0;  // 未知类型
+  PRIVATE = 1;  // 私聊消息
+  GROUP   = 2;  // 群聊消息
+}
+
+enum ContentType {
+    TEXT = 0;
+    PICUTRE = 1;
+    VOICE = 2;
+}
+
+// 消息定义
+message Message {
+  uint64 id = 1;
+  uint64 from_id = 2;
+  uint64 to_id = 3;                    // 接收者ID（私聊为用户ID，群聊为群组ID）
+  MessageType type = 4;                // 消息类型
+  ContentType content_type = 5;        // 内容类型
+  bytes content = 6;                   // 消息内容（二进制数据）
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// 存储消息请求
+message StoreMessageRequest {
+  Message message = 1;
+}
+
+// 存储消息响应
+message StoreMessageResponse {
+  uint64 message_id = 1;
+}
+
+// 获取未读消息请求（仅用于单聊）
+message GetUnreadMessagesRequest {
+  uint64 user_id = 1;                  // 用户ID
+  uint64 last_message_id = 2;          // 上次获取的最后一条消息ID
+  int32 limit = 3;                     // 获取数量限制
+}
+
+// 获取未读消息响应
+message GetUnreadMessagesResponse {
+  repeated Message messages = 1;
+}
+
+// 获取群聊消息请求
+message GetGroupMessagesRequest {
+  uint64 group_id = 1;                 // 群组ID
+  uint64 last_message_id = 2;          // 上次获取的最后一条消息ID
+  int32 limit = 3;                     // 获取数量限制
+}
+
+// 获取群聊消息响应
+message GetGroupMessagesResponse {
+  repeated Message messages = 1;
+} 

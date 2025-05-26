@@ -35,6 +35,7 @@ func StartRpcServer(db *gorm.DB, redis *redis.Client) {
 	}
 	rpcServer := grpc.NewServer()
 	im.RegisterUserServiceServer(rpcServer, &server{db: db, redis: redis})
+	im.RegisterMessageServiceServer(rpcServer, &MessageServiceImpl{db: db})
 	log.Printf("server listening at %v\n", listen.Addr())
 	go func() {
 		if err := rpcServer.Serve(listen); err != nil {
@@ -266,7 +267,7 @@ func (s *server) AddFriend(ctx context.Context, contact *im.Contact) (*im.AddRes
 		return &resp, tx.Error
 	}
 
-	userShip1 := models.Contact{UserID: uint(contact.UserID), FriendID: uint(contact.FriendID), Status: "accepted"}
+	userShip1 := models.Contact{UserID: uint64(contact.UserID), FriendID: uint64(contact.FriendID), Status: "accepted"}
 	result := s.db.Create(&userShip1)
 	// 检查插入是否成功
 
@@ -276,7 +277,7 @@ func (s *server) AddFriend(ctx context.Context, contact *im.Contact) (*im.AddRes
 		return &resp, result.Error
 	}
 
-	userShip2 := models.Contact{UserID: uint(contact.FriendID), FriendID: uint(contact.UserID), Status: "accepted"}
+	userShip2 := models.Contact{UserID: uint64(contact.FriendID), FriendID: uint64(contact.UserID), Status: "accepted"}
 	result = s.db.Create(&userShip2)
 	// 检查插入是否成功
 

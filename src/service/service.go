@@ -30,7 +30,7 @@ type UserService struct {
 
 // NewUserService 构造函数
 func NewUserService(pool *rpcClient.ClientPool, redisDB *redis.Client) *UserService {
-	chatService := NewChatService(redisDB)
+	chatService := NewChatService(redisDB, pool)
 	chatService.Subscription()
 	return &UserService{pool: pool, redisDB: redisDB, chatService: chatService}
 }
@@ -98,7 +98,7 @@ func (s *UserService) Login(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "更新用户登录状态失败"})
 		return
 	}
-	token, err := utils.GenerateToken(dbUser.ID)
+	token, err := utils.GenerateToken(uint64(dbUser.ID))
 	if err != nil {
 		c.JSON(500, gin.H{"error": "生成Token失败"})
 		return
@@ -127,7 +127,7 @@ func (s *UserService) Logout(c *gin.Context) {
 	}
 
 	// 根据用户 ID 查询用户信息
-	dbUser, err := s.getUserByID(userID.(uint))
+	dbUser, err := s.getUserByID(userID.(uint64))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
@@ -171,7 +171,7 @@ func (s *UserService) GetFriends(c *gin.Context) {
 		})
 		return
 	}
-	friends, err := s.getFriends(userId.(uint))
+	friends, err := s.getFriends(userId.(uint64))
 	if err != nil {
 		log.Println("GetFriends失败")
 		c.JSON(400, gin.H{
@@ -186,7 +186,7 @@ func (s *UserService) GetFriends(c *gin.Context) {
 
 type AddFriendReq struct {
 	Username       string `json:"username"`
-	UserID         uint   `json:"userID"`
+	UserID         uint64 `json:"userID"`
 	FriendUsername string `json:"friendUsername"`
 }
 
@@ -208,7 +208,7 @@ func (s *UserService) AddFriend(c *gin.Context) {
 	}
 	var userShips models.Contact
 	userShips.UserID = addFriendReq.UserID
-	userShips.FriendID = friend.ID
+	userShips.FriendID = uint64(friend.ID)
 	err = s.addFriend(&userShips)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -346,7 +346,7 @@ func (s *UserService) GetUserByID(c *gin.Context) {
 		return
 	}
 
-	dbUser, err := s.getUserByID(uint(id))
+	dbUser, err := s.getUserByID(id)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"message": "查询失败",
@@ -455,14 +455,14 @@ func (s *UserService) createUser(user *models.IMUser) error {
 	return nil
 }
 
-func (s *UserService) getFriends(id uint) ([]models.FriendView, error) {
+func (s *UserService) getFriends(id uint64) ([]models.FriendView, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	conn := s.pool.Get()
 	defer s.pool.Put(conn)
 	client := im.NewUserServiceClient(conn)
-	req := im.UserRequest{Id: uint64(id)}
+	req := im.UserRequest{Id: id}
 	result, err := client.GetFriends(ctx, &req)
 	if err != nil {
 		log.Printf("GetFriends failed %v", err)
@@ -489,14 +489,14 @@ func (s *UserService) getUserByName(user *models.IMUser) (*models.IMUser, error)
 	return conveter.ToDBIMUser(result), nil
 }
 
-func (s *UserService) getUserByID(id uint) (*models.IMUser, error) {
+func (s *UserService) getUserByID(id uint64) (*models.IMUser, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	conn := s.pool.Get()
 	defer s.pool.Put(conn)
 	client := im.NewUserServiceClient(conn)
-	req := im.UserRequest{Id: uint64(id)}
+	req := im.UserRequest{Id: id}
 	result, err := client.GetUserByID(ctx, &req)
 	if err != nil {
 		log.Printf("GetUserByID failed %v\n", err)

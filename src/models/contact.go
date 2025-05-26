@@ -7,8 +7,8 @@ import (
 )
 
 type Contact struct {
-	UserID    uint   `gorm:"primaryKey;index" json:"user_id"`
-	FriendID  uint   `gorm:"primaryKey;index" json:"friend_id"`
+	UserID    uint64 `gorm:"primaryKey;index" json:"user_id"`
+	FriendID  uint64 `gorm:"primaryKey;index" json:"friend_id"`
 	Status    string `gorm:"default:'pending';not null" json:"status"`
 	CreatedAt time.Time
 	UpdatedAt time.Time

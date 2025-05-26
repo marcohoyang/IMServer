@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/hoyang/imserver/src/models"
+	rpcClient "github.com/hoyang/imserver/src/rpc"
 	"github.com/hoyang/imserver/src/utils"
 	"github.com/redis/go-redis/v9"
 )
@@ -30,14 +31,15 @@ func CreateNode(c *websocket.Conn) *Node {
 }
 
 type ChatService struct {
-	clientMap map[uint]*Node
+	clientMap map[uint64]*Node
 	rwLocker  sync.RWMutex
 	redisDB   *redis.Client
+	pool      *rpcClient.ClientPool
 }
 
-func NewChatService(redisDB *redis.Client) *ChatService {
-	s := &ChatService{redisDB: redisDB}
-	s.clientMap = make(map[uint]*Node, 10)
+func NewChatService(redisDB *redis.Client, pool *rpcClient.ClientPool) *ChatService {
+	s := &ChatService{redisDB: redisDB, pool: pool}
+	s.clientMap = make(map[uint64]*Node, 10)
 	return s
 }
 
@@ -54,9 +56,9 @@ func (s *ChatService) Subscription() {
 			go func() {
 				log.Println("Subscription revice:", msg)
 				message, _ := models.MessageFromString(msg)
-				log.Println("targetId,", message.TargetId)
+				log.Println("targetId,", message.ToID)
 				s.rwLocker.RLock()
-				node := s.clientMap[message.TargetId]
+				node := s.clientMap[message.ToID]
 				s.rwLocker.RUnlock()
 				if node != nil {
 					node.DataQueue <- message
@@ -95,9 +97,9 @@ func (s *ChatService) Chat(c *gin.Context) {
 		return
 	}
 	s.rwLocker.Lock()
-	s.clientMap[userId.(uint)] = node
+	s.clientMap[userId.(uint64)] = node
 	s.rwLocker.Unlock()
-	defer delete(s.clientMap, userId.(uint))
+	defer delete(s.clientMap, userId.(uint64))
 
 	log.Println("升级websocke成功")
 	response := map[string]interface{}{
@@ -170,7 +172,7 @@ func (s *ChatService) handlerWebsocket(node *Node, c *gin.Context) {
 					closeFunc()
 					return
 				}
-				log.Println(string(message))
+				log.Println("receive message:", string(message))
 
 				var msg models.Message
 				err = json.Unmarshal(message, &msg)
@@ -180,6 +182,9 @@ func (s *ChatService) handlerWebsocket(node *Node, c *gin.Context) {
 				}
 
 				utils.Publish(s.redisDB, c, "msgChannel", msg.String())
+				conn := s.pool.Get()
+				defer s.pool.Put(conn)
+				rpcClient.NewMessageProxy(conn).StoreMessage(msg.FromID, msg.ToID, msg.Type, msg.Content)
 			}
 		}
 	}()
